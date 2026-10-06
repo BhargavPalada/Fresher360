@@ -31,6 +31,11 @@ class Settings(BaseSettings):
 
     # ── CORS ─────────────────────────────────────────────────────────────────
     CORS_ALLOWED_ORIGINS: list[str] = ["http://localhost:5173"]
+    CORS_ALLOWED_ORIGIN_REGEX: str | None = None
+
+    # ── Cookie Security ──────────────────────────────────────────────────────
+    COOKIE_SECURE: bool | None = None
+    COOKIE_SAMESITE: str = "lax"
 
     # ── Seed ─────────────────────────────────────────────────────────────────
     SEED_ADMIN_EMAIL: str = "admin@fresher360.com"
