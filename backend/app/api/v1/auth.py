@@ -46,14 +46,28 @@ _REFRESH_COOKIE_NAME = "refresh_token"
 _REFRESH_COOKIE_PATH = "/api/v1/auth/refresh"
 
 
+def _get_cookie_security_params() -> tuple[bool, str]:
+    """Determine secure flag and samesite policy for cookies based on environment and config."""
+    secure = (
+        _settings.COOKIE_SECURE
+        if _settings.COOKIE_SECURE is not None
+        else (_settings.APP_ENV != "development")
+    )
+    samesite = _settings.COOKIE_SAMESITE.lower()
+    if samesite == "none":
+        secure = True
+    return secure, samesite
+
+
 def _set_refresh_cookie(response: Response, refresh_token: str) -> None:
     """Set the HttpOnly refresh token cookie."""
+    secure, samesite = _get_cookie_security_params()
     response.set_cookie(
         key=_REFRESH_COOKIE_NAME,
         value=refresh_token,
         httponly=True,
-        secure=False,  # Set to True in production (HTTPS)
-        samesite="lax",
+        secure=secure,
+        samesite=samesite,
         path=_REFRESH_COOKIE_PATH,
         max_age=int(timedelta(days=_settings.REFRESH_TOKEN_EXPIRE_DAYS).total_seconds()),
     )
@@ -61,11 +75,13 @@ def _set_refresh_cookie(response: Response, refresh_token: str) -> None:
 
 def _clear_refresh_cookie(response: Response) -> None:
     """Clear the refresh token cookie (logout)."""
+    secure, samesite = _get_cookie_security_params()
     response.delete_cookie(
         key=_REFRESH_COOKIE_NAME,
         path=_REFRESH_COOKIE_PATH,
         httponly=True,
-        samesite="lax",
+        secure=secure,
+        samesite=samesite,
     )
 
 
