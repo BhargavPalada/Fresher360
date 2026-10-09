@@ -19,6 +19,7 @@ from app.infrastructure.database.session import Base
 
 # Import all models so Alembic knows about them
 from app.infrastructure.database.models.user import UserModel  # noqa: F401
+from app.infrastructure.database.models.task import TaskModel, TaskAssignmentModel  # noqa: F401
 
 settings = get_settings()
 
