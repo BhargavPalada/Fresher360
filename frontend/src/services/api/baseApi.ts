@@ -8,7 +8,7 @@ import { clearCredentials, selectAccessToken, updateAccessToken } from '../../fe
 import type { RootState } from '../../app/store';
 import type { ApiResponse } from '../../features/auth/types/auth.types';
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000';
+const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
 
 /**
  * Raw base query — attaches Bearer token from Redux state.
