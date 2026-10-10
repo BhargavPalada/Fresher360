@@ -7,8 +7,10 @@ import {
 import { clearCredentials, selectAccessToken, updateAccessToken } from '../../features/auth/authSlice';
 import type { RootState } from '../../app/store';
 import type { ApiResponse } from '../../features/auth/types/auth.types';
-
-const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
+const rawApiUrl = import.meta.env.VITE_API_BASE_URL;
+const BASE_URL = rawApiUrl && rawApiUrl.trim() !== ''
+  ? rawApiUrl.trim().replace(/\/+$/, '')
+  : '';
 
 /**
  * Raw base query — attaches Bearer token from Redux state.
