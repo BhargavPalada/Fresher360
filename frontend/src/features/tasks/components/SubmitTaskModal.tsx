@@ -14,6 +14,7 @@ import {
 } from '@mui/material';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import { useSubmitTaskMutation, useUploadFileMutation } from '../api/tasksApi';
+import { useAuth } from '../../auth/hooks/useAuth';
 import type { Task } from '../types/tasks.types';
 
 interface SubmitTaskModalProps {
@@ -23,6 +24,7 @@ interface SubmitTaskModalProps {
 }
 
 export function SubmitTaskModal({ open, onClose, task }: SubmitTaskModalProps) {
+  const { user } = useAuth();
   const [submitTask, { isLoading }] = useSubmitTaskMutation();
   const [uploadFile, { isLoading: isUploading }] = useUploadFileMutation();
   
@@ -95,15 +97,15 @@ export function SubmitTaskModal({ open, onClose, task }: SubmitTaskModalProps) {
 
               {/* Progress Bar inside Task Modal */}
               {(() => {
-                const myAssignment = task.assigned_freshers?.[0];
+                const myAssignment = task.assigned_freshers?.find((f) => f.id === user?.id) || task.assigned_freshers?.[0];
                 const rawProgress = myAssignment?.assessment_result;
                 let progressPercent = 0;
 
                 if (rawProgress && !isNaN(Number(rawProgress))) {
                   progressPercent = Math.min(100, Math.max(0, Number(rawProgress)));
-                } else if (task.status?.toLowerCase() === 'completed') {
+                } else if ((myAssignment?.status || task.status)?.toLowerCase() === 'completed') {
                   progressPercent = 100;
-                } else if (task.status?.toLowerCase() === 'in progress') {
+                } else if ((myAssignment?.status || task.status)?.toLowerCase() === 'in progress') {
                   progressPercent = 50;
                 }
 
@@ -136,7 +138,7 @@ export function SubmitTaskModal({ open, onClose, task }: SubmitTaskModalProps) {
 
               {/* Display Admin Feedback / Reopen Note if present */}
               {(() => {
-                const myAssignment = task.assigned_freshers?.find((f) => f.comments);
+                const myAssignment = task.assigned_freshers?.find((f) => f.id === user?.id) || task.assigned_freshers?.find((f) => f.comments);
                 const feedbackComment = myAssignment?.comments || task.comments;
                 if (!feedbackComment) return null;
 

@@ -15,8 +15,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
-# Create non-root user for security
-RUN addgroup --system app && adduser --system --group app
+# Create non-root user and ensure uploads folder permissions
+RUN addgroup --system app && adduser --system --group app \
+    && mkdir -p /app/uploads && chown -R app:app /app/uploads
 USER app
 
 EXPOSE 8000
