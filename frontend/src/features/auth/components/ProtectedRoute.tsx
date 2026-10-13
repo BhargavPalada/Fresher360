@@ -25,10 +25,10 @@ export function ProtectedRoute() {
           alignItems: 'center',
           justifyContent: 'center',
           minHeight: '100vh',
-          background: 'linear-gradient(135deg, #0f0c29, #302b63, #24243e)',
+          background: '#f8fafc',
         }}
       >
-        <CircularProgress size={48} sx={{ color: '#7c6ff7' }} />
+        <CircularProgress size={44} sx={{ color: '#2563eb' }} />
       </Box>
     );
   }

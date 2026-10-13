@@ -10,7 +10,7 @@ import {
   selectIsInitializing,
   setCredentials,
 } from '../authSlice';
-import { useLoginMutation, useLogoutMutation, useRegisterMutation } from '../api/authApi';
+import { useLoginMutation, useLogoutMutation, useRegisterMutation, authApi } from '../api/authApi';
 import type { LoginRequest, RegisterRequest } from '../types/auth.types';
 import type { AppDispatch } from '../../../app/store';
 
@@ -71,6 +71,7 @@ export function useAuth() {
       // Even if server logout fails, clear local state
     } finally {
       dispatch(clearCredentials());
+      dispatch(authApi.util.resetApiState());
       navigate('/login', { replace: true });
     }
   };

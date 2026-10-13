@@ -4,9 +4,14 @@ import {
   type FetchBaseQueryError,
   fetchBaseQuery,
 } from '@reduxjs/toolkit/query';
-import { clearCredentials, selectAccessToken, updateAccessToken } from '../../features/auth/authSlice';
+import {
+  clearCredentials,
+  selectAccessToken,
+  setCredentials,
+  updateAccessToken,
+} from '../../features/auth/authSlice';
 import type { RootState } from '../../app/store';
-import type { ApiResponse } from '../../features/auth/types/auth.types';
+import type { ApiResponse, AuthUser } from '../../features/auth/types/auth.types';
 const rawApiUrl = import.meta.env.VITE_API_BASE_URL;
 const BASE_URL = rawApiUrl && rawApiUrl.trim() !== ''
   ? rawApiUrl.trim().replace(/\/+$/, '')
@@ -33,7 +38,7 @@ const rawBaseQuery = fetchBaseQuery({
  *
  * Flow on 401:
  *  1. Attempt POST /auth/refresh (sends HttpOnly cookie automatically)
- *  2. On success: update Redux access token, retry original request
+ *  2. On success: update Redux access token and user credentials, retry original request
  *  3. On failure: clear Redux state (redirect handled by ProtectedRoute)
  */
 export const baseQueryWithReauth: BaseQueryFn<
@@ -43,7 +48,12 @@ export const baseQueryWithReauth: BaseQueryFn<
 > = async (args, api, extraOptions) => {
   let result = await rawBaseQuery(args, api, extraOptions);
 
-  if (result.error?.status === 401) {
+  const isRefreshRequest =
+    typeof args === 'string'
+      ? args.includes('/auth/refresh')
+      : args.url?.includes('/auth/refresh');
+
+  if (result.error?.status === 401 && !isRefreshRequest) {
     // Attempt silent refresh
     const refreshResult = await rawBaseQuery(
       { url: '/auth/refresh', method: 'POST' },
@@ -52,9 +62,22 @@ export const baseQueryWithReauth: BaseQueryFn<
     );
 
     if (refreshResult.data) {
-      const response = refreshResult.data as ApiResponse<{ access_token: string }>;
+      const response = refreshResult.data as ApiResponse<{
+        access_token: string;
+        token_type?: string;
+        user?: AuthUser;
+      }>;
       if (response.data?.access_token) {
-        api.dispatch(updateAccessToken(response.data.access_token));
+        if (response.data.user) {
+          api.dispatch(
+            setCredentials({
+              user: response.data.user,
+              accessToken: response.data.access_token,
+            })
+          );
+        } else {
+          api.dispatch(updateAccessToken(response.data.access_token));
+        }
         // Retry the original request with the new token
         result = await rawBaseQuery(args, api, extraOptions);
       } else {
