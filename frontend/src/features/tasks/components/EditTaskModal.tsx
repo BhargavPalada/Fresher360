@@ -149,7 +149,7 @@ export function EditTaskModal({ open, onClose, task }: EditTaskModalProps) {
                 value={formData.category}
                 onChange={(e) => setFormData({ ...formData, category: e.target.value as TaskCategory })}
               >
-                {['Technical', 'Training', 'Functional'].map((cat) => (
+                {['Technical', 'Training', 'Functional', 'Documentation'].map((cat) => (
                   <MenuItem key={cat} value={cat}>{cat}</MenuItem>
                 ))}
               </TextField>
@@ -232,7 +232,13 @@ export function EditTaskModal({ open, onClose, task }: EditTaskModalProps) {
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                       {selected.map((value) => {
                         const fresher = freshers.find((f) => f.id === value);
-                        return <Chip key={value} label={fresher ? `${fresher.first_name} ${fresher.last_name}` : value} size="small" />;
+                        const assignedInTask = task?.assigned_freshers.find((f) => f.id === value);
+                        const label = fresher
+                          ? `${fresher.first_name} ${fresher.last_name}`
+                          : assignedInTask
+                          ? `${assignedInTask.first_name} ${assignedInTask.last_name}`
+                          : value;
+                        return <Chip key={value} label={label} size="small" />;
                       })}
                     </Box>
                   )}

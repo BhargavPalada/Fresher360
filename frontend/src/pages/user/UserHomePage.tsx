@@ -365,7 +365,7 @@ export default function UserHomePage({ view = 'dashboard' }: UserHomePageProps) 
       <SubmitTaskModal
         open={!!selectedTask}
         onClose={() => setSelectedTask(null)}
-        task={selectedTask}
+        task={tasks.find((t) => t.id === selectedTask?.id) ?? selectedTask}
       />
     </DashboardLayout>
   );

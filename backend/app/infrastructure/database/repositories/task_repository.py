@@ -199,6 +199,14 @@ class TaskRepository:
         if data.assessment_result is not None:
             assignment.assessment_result = data.assessment_result.strip() if data.assessment_result.strip() else None
 
+        # Synchronize overall task status based on assignments
+        if task.assignments:
+            if all(a.status == TaskStatus.COMPLETED for a in task.assignments):
+                task.status = TaskStatus.COMPLETED
+            elif any(a.status in (TaskStatus.IN_PROGRESS, TaskStatus.COMPLETED) for a in task.assignments):
+                if task.status == TaskStatus.PENDING:
+                    task.status = TaskStatus.IN_PROGRESS
+
         await self._session.commit()
         return await self.get_task_by_id(task.id)
 
@@ -249,6 +257,13 @@ class TaskRepository:
 
         assignment.status = TaskStatus.COMPLETED
         assignment.assessment_status = "Under Review"
+
+        # Synchronize overall task status
+        if task.assignments:
+            if all(a.status == TaskStatus.COMPLETED for a in task.assignments):
+                task.status = TaskStatus.COMPLETED
+            elif task.status == TaskStatus.PENDING:
+                task.status = TaskStatus.IN_PROGRESS
 
         await self._session.commit()
         return await self.get_task_by_id(task.id)

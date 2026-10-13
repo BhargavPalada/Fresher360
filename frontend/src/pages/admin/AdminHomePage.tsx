@@ -401,13 +401,13 @@ export default function AdminHomePage({ view = 'dashboard' }: AdminHomePageProps
           <EditTaskModal
             open={!!editingTask}
             onClose={() => setEditingTask(null)}
-            task={editingTask}
+            task={tasks.find((t) => t.id === editingTask?.id) ?? editingTask}
           />
 
           <UserProgressModal
             open={!!progressTask}
             onClose={() => setProgressTask(null)}
-            task={progressTask}
+            task={tasks.find((t) => t.id === progressTask?.id) ?? progressTask}
           />
         </Stack>
       )}

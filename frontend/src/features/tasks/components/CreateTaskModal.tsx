@@ -130,7 +130,7 @@ export function CreateTaskModal({ open, onClose }: CreateTaskModalProps) {
                 value={formData.category}
                 onChange={(e) => setFormData({ ...formData, category: e.target.value as TaskCategory })}
               >
-                {['Technical', 'Training', 'Functional'].map((cat) => (
+                {['Technical', 'Training', 'Functional', 'Documentation'].map((cat) => (
                   <MenuItem key={cat} value={cat}>{cat}</MenuItem>
                 ))}
               </TextField>
