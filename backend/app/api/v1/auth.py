@@ -43,7 +43,7 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 _settings = get_settings()
 
 _REFRESH_COOKIE_NAME = "refresh_token"
-_REFRESH_COOKIE_PATH = "/api/v1/auth/refresh"
+_REFRESH_COOKIE_PATH = "/"
 
 
 def _get_cookie_security_params() -> tuple[bool, str]:
@@ -233,6 +233,7 @@ async def refresh_token(
         RefreshResponse(
             access_token=access_token,
             token_type="bearer",
+            user=_user_to_response(user),
         ).model_dump()
     )
 
@@ -242,13 +243,11 @@ async def refresh_token(
 @router.post("/logout", response_model=ApiResponse, status_code=status.HTTP_200_OK)
 async def logout(
     response: Response,
-    current_user: User = Depends(get_current_user),
 ) -> ApiResponse:
     """Logout: clears the HttpOnly refresh token cookie server-side."""
-    use_case = LogoutUseCase()
-    await use_case.execute(user_id=str(current_user.id))
-
     _clear_refresh_cookie(response)
+    use_case = LogoutUseCase()
+    await use_case.execute()
     return ApiResponse.success({"message": "Logged out successfully."})
 
 
