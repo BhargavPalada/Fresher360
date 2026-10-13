@@ -10,8 +10,11 @@ import UnauthorizedPage from '../pages/UnauthorizedPage';
 import { useGetCurrentUserQuery } from '../features/auth/api/authApi';
 import {
   clearCredentials,
+  selectAccessToken,
+  selectCurrentUser,
   selectIsAuthenticated,
-  setInitializing,
+  selectIsInitializing,
+  setCredentials,
 } from '../features/auth/authSlice';
 import type { AppDispatch } from './store';
 
@@ -23,28 +26,47 @@ import type { AppDispatch } from './store';
 function AuthInitializer({ children }: { children: ReactNode }) {
   const dispatch = useDispatch<AppDispatch>();
 
-  // Skip /me call once authenticated (e.g., after login)
-  const isAuthenticated = useSelector(selectIsAuthenticated);
+  const isInitializing = useSelector(selectIsInitializing);
+  const accessToken = useSelector(selectAccessToken);
 
+  // Only execute on initial app startup while isInitializing is true.
+  // Once initialization resolves (either authenticated or cleared), skip permanently.
   const { data, error, isLoading } = useGetCurrentUserQuery(undefined, {
-    skip: isAuthenticated,
+    skip: !isInitializing,
   });
 
   useEffect(() => {
-    if (isLoading) return;
+    if (!isInitializing || isLoading) return;
 
     if (data?.data) {
-      // We need an access token — this comes from the refresh flow inside baseQueryWithReauth
-      // For the /me scenario, the token is already in Redux if we just logged in.
-      // If restoring from cookie (page refresh), the reauth middleware handles it.
-      dispatch(setInitializing(false));
+      dispatch(
+        setCredentials({
+          user: data.data,
+          accessToken: accessToken || '',
+        })
+      );
     } else if (error) {
       dispatch(clearCredentials());
-      dispatch(setInitializing(false));
     }
-  }, [data, error, isLoading, dispatch]);
+  }, [isInitializing, data, error, isLoading, dispatch, accessToken]);
 
   return <>{children}</>;
+}
+
+function RootRedirect() {
+  const isAuthenticated = useSelector(selectIsAuthenticated);
+  const isInitializing = useSelector(selectIsInitializing);
+  const user = useSelector(selectCurrentUser);
+
+  if (isInitializing) {
+    return null;
+  }
+
+  if (isAuthenticated && user) {
+    return <Navigate to={user.role === 'ADMIN' ? '/admin' : '/user'} replace />;
+  }
+
+  return <Navigate to="/login" replace />;
 }
 
 const router = createBrowserRouter([
@@ -67,11 +89,11 @@ const router = createBrowserRouter([
         children: [
           {
             path: '/admin',
-            element: <AdminHomePage view="dashboard" />,
+            element: <AdminHomePage key="dashboard" view="dashboard" />,
           },
           {
             path: '/admin/users',
-            element: <AdminHomePage view="users" />,
+            element: <AdminHomePage key="users" view="users" />,
           },
           {
             path: '/admin/freshers',
@@ -79,7 +101,7 @@ const router = createBrowserRouter([
           },
           {
             path: '/admin/tasks',
-            element: <AdminHomePage view="tasks" />,
+            element: <AdminHomePage key="tasks" view="tasks" />,
           },
         ],
       },
@@ -90,11 +112,11 @@ const router = createBrowserRouter([
         children: [
           {
             path: '/user',
-            element: <UserHomePage view="dashboard" />,
+            element: <UserHomePage key="dashboard" view="dashboard" />,
           },
           {
             path: '/user/tasks',
-            element: <UserHomePage view="tasks" />,
+            element: <UserHomePage key="tasks" view="tasks" />,
           },
         ],
       },
@@ -104,13 +126,13 @@ const router = createBrowserRouter([
   // Root redirect
   {
     path: '/',
-    element: <Navigate to="/login" replace />,
+    element: <RootRedirect />,
   },
 
   // Catch-all
   {
     path: '*',
-    element: <Navigate to="/login" replace />,
+    element: <RootRedirect />,
   },
 ]);
 

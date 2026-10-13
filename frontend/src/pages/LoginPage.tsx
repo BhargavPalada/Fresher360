@@ -1,10 +1,18 @@
 import {
   Box,
   Card,
+  CircularProgress,
   Stack,
   Typography,
 } from '@mui/material';
+import { useSelector } from 'react-redux';
+import { Navigate, useLocation } from 'react-router-dom';
 import { LoginForm } from '../features/auth/components/login';
+import {
+  selectCurrentUser,
+  selectIsAuthenticated,
+  selectIsInitializing,
+} from '../features/auth/authSlice';
 import loginIllustration from '../assets/login-illustration.jpg';
 
 /**
@@ -52,11 +60,46 @@ function Fresher360Logo() {
 }
 
 export default function LoginPage() {
+  const isAuthenticated = useSelector(selectIsAuthenticated);
+  const isInitializing = useSelector(selectIsInitializing);
+  const user = useSelector(selectCurrentUser);
+  const location = useLocation();
+
+  if (isInitializing) {
+    return (
+      <Box
+        sx={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: '#f1f5f9',
+        }}
+      >
+        <CircularProgress size={40} sx={{ color: '#2563eb' }} />
+      </Box>
+    );
+  }
+
+  if (isAuthenticated && user) {
+    const from = (location.state as { from?: { pathname?: string } })?.from?.pathname;
+    const isUnauthorizedFrom =
+      from === '/unauthorized' ||
+      (user.role === 'USER' && from?.startsWith('/admin'));
+    const destination =
+      from && !isUnauthorizedFrom
+        ? from
+        : user.role === 'ADMIN'
+        ? '/admin'
+        : '/user';
+    return <Navigate to={destination} replace />;
+  }
+
   return (
     <Box
       sx={{
         minHeight: '100vh',
-        width: '100vw',
+        width: '100%',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
