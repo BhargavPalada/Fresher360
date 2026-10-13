@@ -13,6 +13,11 @@ import {
   TableRow,
   Chip,
   Button,
+  TextField,
+  MenuItem,
+  InputAdornment,
+  IconButton,
+  Tooltip,
 } from '@mui/material';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import PeopleIcon from '@mui/icons-material/People';
@@ -20,9 +25,21 @@ import AssignmentIcon from '@mui/icons-material/Assignment';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import AddIcon from '@mui/icons-material/Add';
+import SearchIcon from '@mui/icons-material/Search';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { DashboardLayout, type SidebarNavOption } from '../../features/auth/components/DashboardLayout';
 import { useAuth } from '../../features/auth/hooks/useAuth';
 import { UserListTable, AddUserModal, useGetUsersQuery } from '../../features/users';
+import {
+  CreateTaskModal,
+  EditTaskModal,
+  UserProgressModal,
+  useGetTasksQuery,
+  useDeleteTaskMutation,
+  type Task,
+} from '../../features/tasks';
 
 interface AdminHomePageProps {
   view?: 'dashboard' | 'users' | 'freshers' | 'tasks';
@@ -34,19 +51,46 @@ const adminNavItems: SidebarNavOption[] = [
   { label: 'Tasks', path: '/admin/tasks', icon: <AssignmentIcon /> },
 ];
 
-const mockTasks = [
-  { id: 'TSK-101', title: 'Complete Auth Module Integration', assignedTo: 'John Doe', priority: 'High', status: 'In Progress', due: 'Tomorrow' },
-  { id: 'TSK-102', title: 'Implement Dashboard Responsive Grid', assignedTo: 'Sarah Jenkins', priority: 'Medium', status: 'Completed', due: 'Sep 18' },
-  { id: 'TSK-103', title: 'Database Migration Scripts Validation', assignedTo: 'Rohan Sharma', priority: 'Urgent', status: 'In Review', due: 'Today' },
-  { id: 'TSK-104', title: 'API Unit Tests & Coverage Report', assignedTo: 'Emily Chen', priority: 'Low', status: 'Pending', due: 'Sep 22' },
-];
-
 export default function AdminHomePage({ view = 'dashboard' }: AdminHomePageProps) {
   const { user } = useAuth();
   const { data: usersData } = useGetUsersQuery();
+
+  // Search & Filter State
+  const [searchTerm, setSearchTerm] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('');
+  const [priorityFilter, setPriorityFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+
+  const { data: tasksData, isLoading: isTasksLoading } = useGetTasksQuery(
+    view === 'tasks'
+      ? {
+          search: searchTerm.trim() || undefined,
+          category: categoryFilter || undefined,
+          priority: priorityFilter || undefined,
+          status: statusFilter || undefined,
+        }
+      : undefined
+  );
+
+  const [deleteTask] = useDeleteTaskMutation();
+
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
+  const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [progressTask, setProgressTask] = useState<Task | null>(null);
 
   const recentUsers = usersData?.data?.slice(0, 4) ?? [];
+  const tasks = tasksData?.data ?? [];
+
+  const handleDeleteTask = async (task: Task) => {
+    if (window.confirm(`Are you sure you want to delete task "${task.title}" (${task.code})?`)) {
+      try {
+        await deleteTask(task.id).unwrap();
+      } catch (err) {
+        console.error('Failed to delete task:', err);
+      }
+    }
+  };
 
   const getTitle = () => {
     switch (view) {
@@ -66,10 +110,7 @@ export default function AdminHomePage({ view = 'dashboard' }: AdminHomePageProps
       {(view === 'users' || view === 'freshers') && (
         <>
           <UserListTable onAddUser={() => setIsAddUserOpen(true)} />
-          <AddUserModal
-            open={isAddUserOpen}
-            onClose={() => setIsAddUserOpen(false)}
-          />
+          <AddUserModal open={isAddUserOpen} onClose={() => setIsAddUserOpen(false)} />
         </>
       )}
 
@@ -79,15 +120,16 @@ export default function AdminHomePage({ view = 'dashboard' }: AdminHomePageProps
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Box>
               <Typography variant="h5" sx={{ fontWeight: 700, color: '#0f172a' }}>
-                Fresher Tasks
+                Task Management
               </Typography>
               <Typography sx={{ color: '#64748b', fontSize: '0.9rem' }}>
-                Assign and monitor technical milestone tasks for freshers.
+                Create, assign, evaluate milestones, and track user-wise progress.
               </Typography>
             </Box>
             <Button
               variant="contained"
               startIcon={<AddIcon />}
+              onClick={() => setIsCreateTaskOpen(true)}
               sx={{
                 background: '#2563eb',
                 boxShadow: 'none',
@@ -99,56 +141,274 @@ export default function AdminHomePage({ view = 'dashboard' }: AdminHomePageProps
             </Button>
           </Box>
 
+          {/* Search & Filter Toolbar */}
+          <Card elevation={0} sx={{ p: 2, border: '1px solid #e2e8f0', borderRadius: 2.5, bgcolor: '#ffffff' }}>
+            <Grid container spacing={2} sx={{ alignItems: 'center' }}>
+              <Grid size={{ xs: 12, md: 4 }}>
+                <TextField
+                  placeholder="Search by title, description, or fresher..."
+                  size="small"
+                  fullWidth
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  slotProps={{
+                    input: {
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <SearchIcon fontSize="small" sx={{ color: '#94a3b8' }} />
+                        </InputAdornment>
+                      ),
+                    },
+                  }}
+                />
+              </Grid>
+
+              <Grid size={{ xs: 12, sm: 4, md: 2.5 }}>
+                <TextField
+                  select
+                  label="Category"
+                  size="small"
+                  fullWidth
+                  value={categoryFilter}
+                  onChange={(e) => setCategoryFilter(e.target.value)}
+                >
+                  <MenuItem value="">All Categories</MenuItem>
+                  <MenuItem value="Technical">Technical</MenuItem>
+                  <MenuItem value="Training">Training</MenuItem>
+                  <MenuItem value="Functional">Functional</MenuItem>
+                  <MenuItem value="Documentation">Documentation</MenuItem>
+                </TextField>
+              </Grid>
+
+              <Grid size={{ xs: 12, sm: 4, md: 2.5 }}>
+                <TextField
+                  select
+                  label="Priority"
+                  size="small"
+                  fullWidth
+                  value={priorityFilter}
+                  onChange={(e) => setPriorityFilter(e.target.value)}
+                >
+                  <MenuItem value="">All Priorities</MenuItem>
+                  <MenuItem value="High">High</MenuItem>
+                  <MenuItem value="Medium">Medium</MenuItem>
+                  <MenuItem value="Low">Low</MenuItem>
+                </TextField>
+              </Grid>
+
+              <Grid size={{ xs: 12, sm: 4, md: 2.5 }}>
+                <TextField
+                  select
+                  label="Status"
+                  size="small"
+                  fullWidth
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                >
+                  <MenuItem value="">All Statuses</MenuItem>
+                  <MenuItem value="Pending">Pending</MenuItem>
+                  <MenuItem value="In Progress">In Progress</MenuItem>
+                  <MenuItem value="Completed">Completed</MenuItem>
+                </TextField>
+              </Grid>
+
+              {(searchTerm || categoryFilter || priorityFilter || statusFilter) && (
+                <Grid size={{ xs: 12, md: 'auto' }}>
+                  <Button
+                    size="small"
+                    color="inherit"
+                    onClick={() => {
+                      setSearchTerm('');
+                      setCategoryFilter('');
+                      setPriorityFilter('');
+                      setStatusFilter('');
+                    }}
+                    sx={{ textTransform: 'none' }}
+                  >
+                    Clear Filters
+                  </Button>
+                </Grid>
+              )}
+            </Grid>
+          </Card>
+
+          {/* Tasks Table */}
           <Card elevation={0} sx={{ border: '1px solid #e2e8f0', borderRadius: 3, overflow: 'hidden' }}>
             <TableContainer>
               <Table>
                 <TableHead sx={{ background: '#f8fafc' }}>
                   <TableRow>
                     <TableCell sx={{ fontWeight: 600, color: '#475569' }}>Task ID</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#475569' }}>Title</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#475569' }}>Assigned To</TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: '#475569' }}>Title & Category</TableCell>
                     <TableCell sx={{ fontWeight: 600, color: '#475569' }}>Priority</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#475569' }}>Status</TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: '#475569' }}>Assigned Freshers</TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: '#475569' }}>User Progress</TableCell>
                     <TableCell sx={{ fontWeight: 600, color: '#475569' }}>Due Date</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 600, color: '#475569' }}>
+                      Actions
+                    </TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {mockTasks.map((task) => (
-                    <TableRow key={task.id} hover>
-                      <TableCell sx={{ fontWeight: 600, color: '#2563eb' }}>{task.id}</TableCell>
-                      <TableCell sx={{ fontWeight: 600, color: '#0f172a' }}>{task.title}</TableCell>
-                      <TableCell sx={{ color: '#475569' }}>{task.assignedTo}</TableCell>
-                      <TableCell>
-                        <Chip
-                          label={task.priority}
-                          size="small"
-                          sx={{
-                            fontSize: '0.75rem',
-                            fontWeight: 600,
-                            background: task.priority === 'Urgent' || task.priority === 'High' ? '#fef2f2' : '#f1f5f9',
-                            color: task.priority === 'Urgent' || task.priority === 'High' ? '#dc2626' : '#475569',
-                          }}
-                        />
+                  {isTasksLoading ? (
+                    <TableRow>
+                      <TableCell colSpan={7} sx={{ textAlign: 'center', py: 4, color: '#94a3b8' }}>
+                        Loading tasks...
                       </TableCell>
-                      <TableCell>
-                        <Chip
-                          label={task.status}
-                          size="small"
-                          sx={{
-                            fontSize: '0.75rem',
-                            fontWeight: 600,
-                            background: task.status === 'Completed' ? '#ecfdf5' : '#eff6ff',
-                            color: task.status === 'Completed' ? '#059669' : '#2563eb',
-                          }}
-                        />
-                      </TableCell>
-                      <TableCell sx={{ color: '#64748b' }}>{task.due}</TableCell>
                     </TableRow>
-                  ))}
+                  ) : tasks.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} sx={{ textAlign: 'center', py: 4, color: '#94a3b8' }}>
+                        No tasks match the selected criteria.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    tasks.map((task) => {
+                      const completedCount = task.assigned_freshers.filter(
+                        (f) => f.status?.toLowerCase() === 'completed'
+                      ).length;
+                      const totalCount = task.assigned_freshers.length;
+
+                      return (
+                        <TableRow key={task.id} hover>
+                          <TableCell sx={{ fontWeight: 700, color: '#2563eb' }}>{task.code}</TableCell>
+                          <TableCell>
+                            <Typography sx={{ fontWeight: 600, color: '#0f172a', fontSize: '0.9rem' }}>
+                              {task.title}
+                            </Typography>
+                            <Chip
+                              label={task.category}
+                              size="small"
+                              sx={{
+                                height: 20,
+                                fontSize: '0.7rem',
+                                fontWeight: 600,
+                                bgcolor: '#f1f5f9',
+                                color: '#475569',
+                                mt: 0.5,
+                              }}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Chip
+                              label={task.priority}
+                              size="small"
+                              sx={{
+                                fontSize: '0.75rem',
+                                fontWeight: 600,
+                                background:
+                                  task.priority?.toLowerCase() === 'high'
+                                    ? '#fef2f2'
+                                    : task.priority?.toLowerCase() === 'medium'
+                                    ? '#fffbeb'
+                                    : '#f1f5f9',
+                                color:
+                                  task.priority?.toLowerCase() === 'high'
+                                    ? '#dc2626'
+                                    : task.priority?.toLowerCase() === 'medium'
+                                    ? '#d97706'
+                                    : '#475569',
+                              }}
+                            />
+                          </TableCell>
+                          <TableCell sx={{ color: '#475569' }}>
+                            {task.assigned_freshers.length === 0 ? (
+                              <Typography variant="caption" sx={{ color: '#94a3b8' }}>
+                                Unassigned
+                              </Typography>
+                            ) : (
+                              <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap', gap: 0.5 }}>
+                                {task.assigned_freshers.map((f) => (
+                                  <Chip
+                                    key={f.id}
+                                    label={`${f.first_name} ${f.last_name}`}
+                                    size="small"
+                                    variant="outlined"
+                                    color={f.status?.toLowerCase() === 'completed' ? 'success' : 'default'}
+                                    sx={{ fontSize: '0.75rem', fontWeight: 500 }}
+                                  />
+                                ))}
+                              </Stack>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <Chip
+                              label={`${completedCount}/${totalCount} Completed`}
+                              size="small"
+                              sx={{
+                                fontWeight: 700,
+                                fontSize: '0.75rem',
+                                background:
+                                  totalCount > 0 && completedCount === totalCount
+                                    ? '#ecfdf5'
+                                    : '#eff6ff',
+                                color:
+                                  totalCount > 0 && completedCount === totalCount
+                                    ? '#059669'
+                                    : '#2563eb',
+                              }}
+                            />
+                          </TableCell>
+                          <TableCell sx={{ color: '#64748b', fontSize: '0.85rem' }}>
+                            {task.due_date ? new Date(task.due_date).toLocaleDateString() : 'No Due Date'}
+                          </TableCell>
+                          <TableCell align="right">
+                            <Stack direction="row" spacing={1} sx={{ justifyContent: 'flex-end' }}>
+                              <Tooltip title="View User Progress & Evaluation">
+                                <IconButton
+                                  size="small"
+                                  color="primary"
+                                  onClick={() => setProgressTask(task)}
+                                  sx={{ bgcolor: '#eff6ff' }}
+                                >
+                                  <VisibilityIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                              <Tooltip title="Edit Task Details">
+                                <IconButton
+                                  size="small"
+                                  color="info"
+                                  onClick={() => setEditingTask(task)}
+                                  sx={{ bgcolor: '#f0f9ff' }}
+                                >
+                                  <EditIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                              <Tooltip title="Delete Task">
+                                <IconButton
+                                  size="small"
+                                  color="error"
+                                  onClick={() => handleDeleteTask(task)}
+                                  sx={{ bgcolor: '#fef2f2' }}
+                                >
+                                  <DeleteIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                            </Stack>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
                 </TableBody>
               </Table>
             </TableContainer>
           </Card>
+
+          {/* Modals */}
+          <CreateTaskModal open={isCreateTaskOpen} onClose={() => setIsCreateTaskOpen(false)} />
+
+          <EditTaskModal
+            open={!!editingTask}
+            onClose={() => setEditingTask(null)}
+            task={tasks.find((t) => t.id === editingTask?.id) ?? editingTask}
+          />
+
+          <UserProgressModal
+            open={!!progressTask}
+            onClose={() => setProgressTask(null)}
+            task={tasks.find((t) => t.id === progressTask?.id) ?? progressTask}
+          />
         </Stack>
       )}
 
@@ -168,7 +428,7 @@ export default function AdminHomePage({ view = 'dashboard' }: AdminHomePageProps
           <Grid container spacing={3}>
             {[
               { label: 'Total Freshers', value: '48', icon: <PeopleIcon />, color: '#2563eb', bg: '#eff6ff', change: '+12% this cohort' },
-              { label: 'Active Tasks', value: '24', icon: <AssignmentIcon />, color: '#6366f1', bg: '#eef2ff', change: '8 due this week' },
+              { label: 'Active Tasks', value: `${tasks.length}`, icon: <AssignmentIcon />, color: '#6366f1', bg: '#eef2ff', change: 'Live tracked' },
               { label: 'Completion Rate', value: '92%', icon: <CheckCircleIcon />, color: '#059669', bg: '#ecfdf5', change: '+4% vs last sprint' },
               { label: 'Average Score', value: '88.5', icon: <TrendingUpIcon />, color: '#d97706', bg: '#fffbeb', change: 'Top quartile' },
             ].map((stat) => (
@@ -286,22 +546,37 @@ export default function AdminHomePage({ view = 'dashboard' }: AdminHomePageProps
             <Grid size={{ xs: 12, md: 5 }}>
               <Card elevation={0} sx={{ border: '1px solid #e2e8f0', borderRadius: 3, p: 3, background: '#ffffff' }}>
                 <Typography variant="h6" sx={{ fontWeight: 700, color: '#0f172a', mb: 2 }}>
-                  High Priority Tasks
+                  Recent Tasks
                 </Typography>
                 <Stack spacing={2}>
-                  {mockTasks.slice(0, 3).map((task) => (
-                    <Box key={task.id} sx={{ p: 1.5, borderRadius: 2, background: '#f8fafc', border: '1px solid #f1f5f9' }}>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
-                        <Typography sx={{ fontWeight: 600, fontSize: '0.85rem', color: '#0f172a' }}>
-                          {task.title}
+                  {tasks.length === 0 ? (
+                    <Typography sx={{ color: '#94a3b8', fontSize: '0.875rem' }}>No tasks found.</Typography>
+                  ) : (
+                    tasks.slice(0, 3).map((task) => (
+                      <Box key={task.id} sx={{ p: 1.5, borderRadius: 2, background: '#f8fafc', border: '1px solid #f1f5f9' }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                          <Typography sx={{ fontWeight: 600, fontSize: '0.85rem', color: '#0f172a' }}>
+                            {task.title}
+                          </Typography>
+                          <Chip
+                            label={task.priority}
+                            size="small"
+                            sx={{
+                              height: 20,
+                              fontSize: '0.65rem',
+                              fontWeight: 700,
+                              bgcolor: task.priority?.toLowerCase() === 'high' ? '#fef2f2' : '#fffbeb',
+                              color: task.priority?.toLowerCase() === 'high' ? '#dc2626' : '#d97706',
+                            }}
+                          />
+                        </Box>
+                        <Typography sx={{ fontSize: '0.75rem', color: '#64748b' }}>
+                          Assigned to: {task.assigned_freshers.map((f) => f.first_name).join(', ') || 'Unassigned'}
+                          {task.due_date ? ` • Due ${new Date(task.due_date).toLocaleDateString()}` : ''}
                         </Typography>
-                        <Chip label={task.priority} size="small" sx={{ height: 20, fontSize: '0.65rem', fontWeight: 700, bgcolor: '#fef2f2', color: '#dc2626' }} />
                       </Box>
-                      <Typography sx={{ fontSize: '0.75rem', color: '#64748b' }}>
-                        Assigned to: {task.assignedTo} • Due {task.due}
-                      </Typography>
-                    </Box>
-                  ))}
+                    ))
+                  )}
                 </Stack>
               </Card>
             </Grid>
@@ -311,4 +586,3 @@ export default function AdminHomePage({ view = 'dashboard' }: AdminHomePageProps
     </DashboardLayout>
   );
 }
-

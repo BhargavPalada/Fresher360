@@ -21,6 +21,8 @@ from app.domain.exceptions.authentication import (
 from app.domain.exceptions.authorization import ForbiddenError
 from app.infrastructure.auth.jwt import JWTService
 from app.infrastructure.auth.password import PasswordHasher
+from app.application.tasks.task_service import TaskService
+from app.infrastructure.database.repositories.task_repository import TaskRepository
 from app.infrastructure.database.repositories.user_repository import UserRepository
 from app.infrastructure.database.session import AsyncSession, get_db
 
@@ -45,6 +47,16 @@ def get_jwt_service() -> JWTService:
 
 def get_user_repository(session: AsyncSession = Depends(get_db)) -> UserRepository:
     return UserRepository(session)
+
+
+def get_task_repository(session: AsyncSession = Depends(get_db)) -> TaskRepository:
+    return TaskRepository(session)
+
+
+def get_task_service(
+    task_repo: TaskRepository = Depends(get_task_repository),
+) -> TaskService:
+    return TaskService(task_repo)
 
 
 # ── Authentication ────────────────────────────────────────────────────────────

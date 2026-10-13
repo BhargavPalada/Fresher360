@@ -10,7 +10,7 @@ import type { ApiResponse } from '../../features/auth/types/auth.types';
 const rawApiUrl = import.meta.env.VITE_API_BASE_URL;
 const BASE_URL = rawApiUrl && rawApiUrl.trim() !== ''
   ? rawApiUrl.trim().replace(/\/+$/, '')
-  : 'http://localhost:8000';
+  : '';
 
 /**
  * Raw base query — attaches Bearer token from Redux state.

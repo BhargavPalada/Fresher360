@@ -18,8 +18,9 @@ COPY . .
 # Make start script executable
 RUN chmod +x start.sh
 
-# Create non-root user for security
-RUN addgroup --system app && adduser --system --group app && chown -R app:app /app
+# Create non-root user, ensure uploads folder, and grant ownership
+RUN addgroup --system app && adduser --system --group app \
+    && mkdir -p /app/uploads && chown -R app:app /app
 USER app
 
 EXPOSE 8000
