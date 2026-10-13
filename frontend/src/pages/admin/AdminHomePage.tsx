@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Card,
@@ -18,6 +19,8 @@ import {
   InputAdornment,
   IconButton,
   Tooltip,
+  LinearProgress,
+  Skeleton,
 } from '@mui/material';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import PeopleIcon from '@mui/icons-material/People';
@@ -29,6 +32,8 @@ import SearchIcon from '@mui/icons-material/Search';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import CategoryIcon from '@mui/icons-material/Category';
 import { DashboardLayout, type SidebarNavOption } from '../../features/auth/components/DashboardLayout';
 import { useAuth } from '../../features/auth/hooks/useAuth';
 import { UserListTable, AddUserModal, useGetUsersQuery } from '../../features/users';
@@ -40,6 +45,7 @@ import {
   useDeleteTaskMutation,
   type Task,
 } from '../../features/tasks';
+import { useGetAdminDashboardStatsQuery } from '../../features/dashboard';
 
 interface AdminHomePageProps {
   view?: 'dashboard' | 'users' | 'freshers' | 'tasks';
@@ -52,8 +58,11 @@ const adminNavItems: SidebarNavOption[] = [
 ];
 
 export default function AdminHomePage({ view = 'dashboard' }: AdminHomePageProps) {
+  const navigate = useNavigate();
   const { user } = useAuth();
-  const { data: usersData } = useGetUsersQuery();
+  const { data: usersData, isLoading: isUsersLoading } = useGetUsersQuery();
+  const { data: dashboardStatsData, isLoading: isDashboardLoading } = useGetAdminDashboardStatsQuery();
+  const apiStats = dashboardStatsData?.data;
 
   // Search & Filter State
   const [searchTerm, setSearchTerm] = useState('');
@@ -79,8 +88,89 @@ export default function AdminHomePage({ view = 'dashboard' }: AdminHomePageProps
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [progressTask, setProgressTask] = useState<Task | null>(null);
 
-  const recentUsers = usersData?.data?.slice(0, 4) ?? [];
+  useEffect(() => {
+    setIsCreateTaskOpen(false);
+    setIsAddUserOpen(false);
+    setEditingTask(null);
+    setProgressTask(null);
+  }, [view]);
+
+  const allUsers = usersData?.data ?? [];
+  const freshers = allUsers.filter((u) => u.role === 'USER');
+  const activeFreshers = freshers.filter((u) => u.is_active);
+  const totalFreshersCount = apiStats?.total_freshers ?? freshers.length;
+  const activeFreshersCount = apiStats?.active_freshers ?? activeFreshers.length;
+  const totalAdminsCount = apiStats?.total_admins ?? allUsers.filter((u) => u.role === 'ADMIN').length;
+
   const tasks = tasksData?.data ?? [];
+  const totalTasksCount = apiStats?.total_tasks ?? tasks.length;
+  const completedTasks = tasks.filter((t) => t.status?.toLowerCase() === 'completed');
+  const completedTasksCount = apiStats?.completed_tasks ?? completedTasks.length;
+  const activeTasks = tasks.filter((t) => t.status?.toLowerCase() !== 'completed');
+  const activeTasksCount = apiStats?.active_tasks ?? activeTasks.length;
+
+  const allAssignments = tasks.flatMap((t) => t.assigned_freshers || []);
+  const totalAssignmentsCount = apiStats?.total_assignments ?? allAssignments.length;
+  const completedAssignments = allAssignments.filter(
+    (a) => a.status?.toLowerCase() === 'completed'
+  );
+  const completedAssignmentsCount =
+    apiStats?.completed_assignments ?? completedAssignments.length;
+
+  const completionRate =
+    apiStats?.completion_rate ??
+    (totalAssignmentsCount > 0
+      ? Math.round((completedAssignmentsCount / totalAssignmentsCount) * 100)
+      : totalTasksCount > 0
+      ? Math.round((completedTasksCount / totalTasksCount) * 100)
+      : 0);
+
+  const gradedAssignments = allAssignments.filter(
+    (a) => a.assessment_result && !isNaN(Number(a.assessment_result))
+  );
+  const averageScore =
+    apiStats?.average_score !== undefined
+      ? apiStats.average_score
+      : gradedAssignments.length > 0
+      ? Number(
+          (
+            gradedAssignments.reduce((acc, a) => acc + Number(a.assessment_result), 0) /
+            gradedAssignments.length
+          ).toFixed(1)
+        )
+      : null;
+
+  const passedCount =
+    apiStats?.passed_count ??
+    allAssignments.filter((a) => a.assessment_status?.toLowerCase() === 'passed').length;
+
+  const pendingEvaluationsCount =
+    apiStats?.pending_evaluations ??
+    allAssignments.filter(
+      (a) =>
+        a.status?.toLowerCase() === 'in review' ||
+        (a.status?.toLowerCase() === 'completed' &&
+          (a.assessment_status || 'Pending').toLowerCase() === 'pending')
+    ).length;
+
+  const recentUsers = allUsers.slice(0, 5);
+  const recentTasks = tasks.slice(0, 4);
+
+  const categoryCounts: Record<string, number> =
+    apiStats?.category_counts ??
+    tasks.reduce<Record<string, number>>((acc, t) => {
+      const cat = t.category || 'Other';
+      acc[cat] = (acc[cat] || 0) + 1;
+      return acc;
+    }, {});
+
+  const priorityCounts: Record<string, number> =
+    apiStats?.priority_counts ??
+    tasks.reduce<Record<string, number>>((acc, t) => {
+      const prio = t.priority || 'Medium';
+      acc[prio] = (acc[prio] || 0) + 1;
+      return acc;
+    }, {});
 
   const handleDeleteTask = async (task: Task) => {
     if (window.confirm(`Are you sure you want to delete task "${task.title}" (${task.code})?`)) {
@@ -415,82 +505,282 @@ export default function AdminHomePage({ view = 'dashboard' }: AdminHomePageProps
       {/* ── View: Dashboard (Default) ── */}
       {view === 'dashboard' && (
         <Stack spacing={4}>
+          {/* Welcome Header */}
           <Box>
             <Typography variant="h4" sx={{ fontWeight: 800, color: '#0f172a', letterSpacing: '-0.02em' }}>
               Welcome back, {user?.first_name}! 👋
             </Typography>
             <Typography sx={{ color: '#64748b', mt: 0.5 }}>
-              Here is an overview of Fresher360 platform activity today.
+              Real-time platform activity and fresher performance tracked live from database.
             </Typography>
           </Box>
 
-          {/* Stat Cards */}
+          {/* Stat Cards Grid */}
           <Grid container spacing={3}>
-            {[
-              { label: 'Total Freshers', value: '48', icon: <PeopleIcon />, color: '#2563eb', bg: '#eff6ff', change: '+12% this cohort' },
-              { label: 'Active Tasks', value: `${tasks.length}`, icon: <AssignmentIcon />, color: '#6366f1', bg: '#eef2ff', change: 'Live tracked' },
-              { label: 'Completion Rate', value: '92%', icon: <CheckCircleIcon />, color: '#059669', bg: '#ecfdf5', change: '+4% vs last sprint' },
-              { label: 'Average Score', value: '88.5', icon: <TrendingUpIcon />, color: '#d97706', bg: '#fffbeb', change: 'Top quartile' },
-            ].map((stat) => (
-              <Grid size={{ xs: 12, sm: 6, md: 3 }} key={stat.label}>
-                <Card
-                  elevation={0}
-                  sx={{
-                    p: 3,
-                    borderRadius: 3,
-                    border: '1px solid #e2e8f0',
-                    background: '#ffffff',
-                    transition: 'all 0.2s ease',
-                    '&:hover': {
-                      boxShadow: '0 10px 25px -5px rgba(0,0,0,0.05)',
-                      transform: 'translateY(-2px)',
+            {(isDashboardLoading || isTasksLoading || isUsersLoading) ? (
+              Array.from({ length: 4 }).map((_, i) => (
+                <Grid size={{ xs: 12, sm: 6, md: 3 }} key={i}>
+                  <Card elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid #e2e8f0' }}>
+                    <Skeleton variant="text" width="50%" height={24} />
+                    <Skeleton variant="text" width="80%" height={48} />
+                    <Skeleton variant="text" width="60%" height={20} />
+                  </Card>
+                </Grid>
+              ))
+            ) : (
+              [
+                {
+                  label: 'Total Freshers',
+                  value: `${totalFreshersCount}`,
+                  icon: <PeopleIcon />,
+                  color: '#2563eb',
+                  bg: '#eff6ff',
+                  change: `${activeFreshersCount} active • ${totalAdminsCount} admins`,
+                  action: () => navigate('/admin/users'),
+                },
+                {
+                  label: 'Active Tasks',
+                  value: `${activeTasksCount}`,
+                  icon: <AssignmentIcon />,
+                  color: '#6366f1',
+                  bg: '#eef2ff',
+                  change: `${completedTasksCount} of ${totalTasksCount} tasks completed`,
+                  action: () => navigate('/admin/tasks'),
+                },
+                {
+                  label: 'Completion Rate',
+                  value: `${completionRate}%`,
+                  icon: <CheckCircleIcon />,
+                  color: '#059669',
+                  bg: '#ecfdf5',
+                  change:
+                    totalAssignmentsCount > 0
+                      ? `${completedAssignmentsCount} of ${totalAssignmentsCount} assignments done`
+                      : totalTasksCount > 0
+                      ? `${completedTasksCount} of ${totalTasksCount} tasks done`
+                      : 'No tasks assigned yet',
+                  action: () => navigate('/admin/tasks'),
+                },
+                {
+                  label: 'Average Score',
+                  value: averageScore !== null ? `${averageScore}%` : 'N/A',
+                  icon: <TrendingUpIcon />,
+                  color: '#d97706',
+                  bg: '#fffbeb',
+                  change:
+                    gradedAssignments.length > 0
+                      ? `${passedCount} passed • ${gradedAssignments.length} evaluated`
+                      : pendingEvaluationsCount > 0
+                      ? `${pendingEvaluationsCount} awaiting review`
+                      : 'No graded evaluations yet',
+                  action: () => navigate('/admin/tasks'),
+                },
+              ].map((stat) => (
+                <Grid size={{ xs: 12, sm: 6, md: 3 }} key={stat.label}>
+                  <Card
+                    elevation={0}
+                    onClick={stat.action}
+                    sx={{
+                      p: 3,
+                      borderRadius: 3,
+                      border: '1px solid #e2e8f0',
+                      background: '#ffffff',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      '&:hover': {
+                        boxShadow: '0 10px 25px -5px rgba(0,0,0,0.06)',
+                        transform: 'translateY(-2px)',
+                        borderColor: stat.color,
+                      },
+                    }}
+                  >
+                    <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <Box>
+                        <Typography sx={{ fontSize: '0.85rem', fontWeight: 600, color: '#64748b' }}>
+                          {stat.label}
+                        </Typography>
+                        <Typography variant="h4" sx={{ fontWeight: 800, color: '#0f172a', my: 0.5 }}>
+                          {stat.value}
+                        </Typography>
+                        <Typography sx={{ fontSize: '0.75rem', fontWeight: 500, color: stat.color }}>
+                          {stat.change}
+                        </Typography>
+                      </Box>
+                      <Box
+                        sx={{
+                          width: 44,
+                          height: 44,
+                          borderRadius: 2.5,
+                          background: stat.bg,
+                          color: stat.color,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        {stat.icon}
+                      </Box>
+                    </Stack>
+                  </Card>
+                </Grid>
+              ))
+            )}
+          </Grid>
+
+          {/* Platform Distribution & Breakdown Row */}
+          <Grid container spacing={3}>
+            {/* Category Breakdown */}
+            <Grid size={{ xs: 12, md: 6 }}>
+              <Card elevation={0} sx={{ border: '1px solid #e2e8f0', borderRadius: 3, p: 3, background: '#ffffff', height: '100%' }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                  <Typography variant="h6" sx={{ fontWeight: 700, color: '#0f172a' }}>
+                    Task Categories Distribution
+                  </Typography>
+                  <Chip
+                    icon={<CategoryIcon fontSize="small" />}
+                    label={`${totalTasksCount} Total Tasks`}
+                    size="small"
+                    sx={{ fontWeight: 600, bgcolor: '#f1f5f9', color: '#475569' }}
+                  />
+                </Box>
+                <Stack spacing={2}>
+                  {['Technical', 'Training', 'Functional', 'Documentation'].map((category) => {
+                    const count = categoryCounts[category] || 0;
+                    const pct = totalTasksCount > 0 ? Math.round((count / totalTasksCount) * 100) : 0;
+                    return (
+                      <Box key={category}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                          <Typography sx={{ fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}>
+                            {category}
+                          </Typography>
+                          <Typography sx={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600 }}>
+                            {count} {count === 1 ? 'task' : 'tasks'} ({pct}%)
+                          </Typography>
+                        </Box>
+                        <LinearProgress
+                          variant="determinate"
+                          value={pct}
+                          sx={{
+                            height: 8,
+                            borderRadius: 4,
+                            bgcolor: '#f1f5f9',
+                            '& .MuiLinearProgress-bar': {
+                              bgcolor:
+                                category === 'Technical'
+                                  ? '#2563eb'
+                                  : category === 'Training'
+                                  ? '#7c3aed'
+                                  : category === 'Functional'
+                                  ? '#059669'
+                                  : '#d97706',
+                              borderRadius: 4,
+                            },
+                          }}
+                        />
+                      </Box>
+                    );
+                  })}
+                </Stack>
+              </Card>
+            </Grid>
+
+            {/* Status & Priority Overview */}
+            <Grid size={{ xs: 12, md: 6 }}>
+              <Card elevation={0} sx={{ border: '1px solid #e2e8f0', borderRadius: 3, p: 3, background: '#ffffff', height: '100%' }}>
+                <Typography variant="h6" sx={{ fontWeight: 700, color: '#0f172a', mb: 2 }}>
+                  Task Status & Priority Summary
+                </Typography>
+
+                <Typography sx={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', mb: 1.5 }}>
+                  Status Overview
+                </Typography>
+                <Grid container spacing={1.5} sx={{ mb: 3 }}>
+                  {[
+                    { label: 'Completed', count: completedTasksCount, color: '#059669', bg: '#ecfdf5' },
+                    {
+                      label: 'In Progress',
+                      count: tasks.filter((t) => t.status?.toLowerCase() === 'in progress').length,
+                      color: '#2563eb',
+                      bg: '#eff6ff',
                     },
-                  }}
-                >
-                  <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <Box>
-                      <Typography sx={{ fontSize: '0.85rem', fontWeight: 600, color: '#64748b' }}>
-                        {stat.label}
-                      </Typography>
-                      <Typography variant="h4" sx={{ fontWeight: 800, color: '#0f172a', my: 0.5 }}>
-                        {stat.value}
-                      </Typography>
-                      <Typography sx={{ fontSize: '0.75rem', fontWeight: 500, color: stat.color }}>
-                        {stat.change}
-                      </Typography>
-                    </Box>
-                    <Box
+                    {
+                      label: 'Pending',
+                      count: tasks.filter((t) => t.status?.toLowerCase() === 'pending').length,
+                      color: '#64748b',
+                      bg: '#f1f5f9',
+                    },
+                  ].map((item) => (
+                    <Grid size={{ xs: 4 }} key={item.label}>
+                      <Box
+                        sx={{
+                          p: 1.5,
+                          borderRadius: 2,
+                          background: item.bg,
+                          border: `1px solid ${item.bg}`,
+                          textAlign: 'center',
+                        }}
+                      >
+                        <Typography sx={{ fontSize: '1.25rem', fontWeight: 800, color: item.color }}>
+                          {item.count}
+                        </Typography>
+                        <Typography sx={{ fontSize: '0.75rem', fontWeight: 600, color: item.color }}>
+                          {item.label}
+                        </Typography>
+                      </Box>
+                    </Grid>
+                  ))}
+                </Grid>
+
+                <Typography sx={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', mb: 1.5 }}>
+                  Priority Breakdown
+                </Typography>
+                <Stack direction="row" spacing={1.5} sx={{ flexWrap: 'wrap', gap: 1 }}>
+                  {[
+                    { label: 'High Priority', count: priorityCounts['High'] || 0, color: '#dc2626', bg: '#fef2f2' },
+                    { label: 'Medium Priority', count: priorityCounts['Medium'] || 0, color: '#d97706', bg: '#fffbeb' },
+                    { label: 'Low Priority', count: priorityCounts['Low'] || 0, color: '#059669', bg: '#ecfdf5' },
+                  ].map((prio) => (
+                    <Chip
+                      key={prio.label}
+                      label={`${prio.label}: ${prio.count}`}
                       sx={{
-                        width: 44,
-                        height: 44,
-                        borderRadius: 2.5,
-                        background: stat.bg,
-                        color: stat.color,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
+                        fontWeight: 600,
+                        fontSize: '0.8rem',
+                        bgcolor: prio.bg,
+                        color: prio.color,
+                        border: '1px solid',
+                        borderColor: prio.color + '33',
                       }}
-                    >
-                      {stat.icon}
-                    </Box>
-                  </Stack>
-                </Card>
-              </Grid>
-            ))}
+                    />
+                  ))}
+                </Stack>
+              </Card>
+            </Grid>
           </Grid>
 
           {/* Quick Tables Section */}
           <Grid container spacing={3}>
-            <Grid size={{ xs: 12, md: 7 }}>
-              <Card elevation={0} sx={{ border: '1px solid #e2e8f0', borderRadius: 3, p: 3, background: '#ffffff' }}>
-                <Typography variant="h6" sx={{ fontWeight: 700, color: '#0f172a', mb: 2 }}>
-                  Recent Users
-                </Typography>
+            {/* Recent Users Card */}
+            <Grid size={{ xs: 12, md: 6 }}>
+              <Card elevation={0} sx={{ border: '1px solid #e2e8f0', borderRadius: 3, p: 3, background: '#ffffff', height: '100%' }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                  <Typography variant="h6" sx={{ fontWeight: 700, color: '#0f172a' }}>
+                    Recent Users
+                  </Typography>
+                  <Button
+                    size="small"
+                    endIcon={<ArrowForwardIcon fontSize="small" />}
+                    onClick={() => navigate('/admin/users')}
+                    sx={{ textTransform: 'none', fontWeight: 600, color: '#2563eb' }}
+                  >
+                    View All ({allUsers.length})
+                  </Button>
+                </Box>
                 <TableContainer>
                   <Table size="small">
                     <TableHead>
                       <TableRow>
-                        <TableCell sx={{ fontWeight: 600, color: '#64748b' }}>Name</TableCell>
+                        <TableCell sx={{ fontWeight: 600, color: '#64748b' }}>Name & Email</TableCell>
                         <TableCell sx={{ fontWeight: 600, color: '#64748b' }}>Role</TableCell>
                         <TableCell sx={{ fontWeight: 600, color: '#64748b' }}>Status</TableCell>
                       </TableRow>
@@ -499,14 +789,19 @@ export default function AdminHomePage({ view = 'dashboard' }: AdminHomePageProps
                       {recentUsers.length === 0 ? (
                         <TableRow>
                           <TableCell colSpan={3} sx={{ textAlign: 'center', py: 3, color: '#94a3b8' }}>
-                            No users registered yet
+                            No users registered yet.
                           </TableCell>
                         </TableRow>
                       ) : (
                         recentUsers.map((row) => (
-                          <TableRow key={row.id}>
-                            <TableCell sx={{ fontWeight: 600, color: '#0f172a' }}>
-                              {row.first_name} {row.last_name}
+                          <TableRow key={row.id} hover>
+                            <TableCell>
+                              <Typography sx={{ fontWeight: 600, color: '#0f172a', fontSize: '0.85rem' }}>
+                                {row.first_name} {row.last_name}
+                              </Typography>
+                              <Typography sx={{ fontSize: '0.75rem', color: '#64748b' }}>
+                                {row.email}
+                              </Typography>
                             </TableCell>
                             <TableCell>
                               <Chip
@@ -543,39 +838,139 @@ export default function AdminHomePage({ view = 'dashboard' }: AdminHomePageProps
               </Card>
             </Grid>
 
-            <Grid size={{ xs: 12, md: 5 }}>
-              <Card elevation={0} sx={{ border: '1px solid #e2e8f0', borderRadius: 3, p: 3, background: '#ffffff' }}>
-                <Typography variant="h6" sx={{ fontWeight: 700, color: '#0f172a', mb: 2 }}>
-                  Recent Tasks
-                </Typography>
+            {/* Recent Tasks Card */}
+            <Grid size={{ xs: 12, md: 6 }}>
+              <Card elevation={0} sx={{ border: '1px solid #e2e8f0', borderRadius: 3, p: 3, background: '#ffffff', height: '100%' }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                  <Typography variant="h6" sx={{ fontWeight: 700, color: '#0f172a' }}>
+                    Recent Tasks
+                  </Typography>
+                  <Button
+                    size="small"
+                    endIcon={<ArrowForwardIcon fontSize="small" />}
+                    onClick={() => navigate('/admin/tasks')}
+                    sx={{ textTransform: 'none', fontWeight: 600, color: '#2563eb' }}
+                  >
+                    View All ({tasks.length})
+                  </Button>
+                </Box>
                 <Stack spacing={2}>
-                  {tasks.length === 0 ? (
-                    <Typography sx={{ color: '#94a3b8', fontSize: '0.875rem' }}>No tasks found.</Typography>
+                  {recentTasks.length === 0 ? (
+                    <Box sx={{ textAlign: 'center', py: 4 }}>
+                      <Typography sx={{ color: '#94a3b8', fontSize: '0.875rem', mb: 1.5 }}>
+                        No tasks created yet in the database.
+                      </Typography>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        startIcon={<AddIcon />}
+                        onClick={() => navigate('/admin/tasks')}
+                        sx={{ textTransform: 'none' }}
+                      >
+                        Create First Task
+                      </Button>
+                    </Box>
                   ) : (
-                    tasks.slice(0, 3).map((task) => (
-                      <Box key={task.id} sx={{ p: 1.5, borderRadius: 2, background: '#f8fafc', border: '1px solid #f1f5f9' }}>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
-                          <Typography sx={{ fontWeight: 600, fontSize: '0.85rem', color: '#0f172a' }}>
-                            {task.title}
-                          </Typography>
-                          <Chip
-                            label={task.priority}
-                            size="small"
-                            sx={{
-                              height: 20,
-                              fontSize: '0.65rem',
-                              fontWeight: 700,
-                              bgcolor: task.priority?.toLowerCase() === 'high' ? '#fef2f2' : '#fffbeb',
-                              color: task.priority?.toLowerCase() === 'high' ? '#dc2626' : '#d97706',
-                            }}
-                          />
+                    recentTasks.map((task) => {
+                      const completedCount = task.assigned_freshers.filter(
+                        (f) => f.status?.toLowerCase() === 'completed'
+                      ).length;
+                      const totalCount = task.assigned_freshers.length;
+
+                      return (
+                        <Box
+                          key={task.id}
+                          sx={{
+                            p: 2,
+                            borderRadius: 2.5,
+                            background: '#f8fafc',
+                            border: '1px solid #f1f5f9',
+                            transition: 'all 0.2s ease',
+                            '&:hover': {
+                              background: '#f1f5f9',
+                              borderColor: '#cbd5e1',
+                            },
+                          }}
+                        >
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                            <Box>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Typography sx={{ fontWeight: 700, fontSize: '0.8rem', color: '#2563eb' }}>
+                                  {task.code}
+                                </Typography>
+                                <Typography sx={{ fontWeight: 600, fontSize: '0.9rem', color: '#0f172a' }}>
+                                  {task.title}
+                                </Typography>
+                              </Box>
+                              <Stack direction="row" spacing={0.75} sx={{ mt: 0.5, alignItems: 'center' }}>
+                                <Chip
+                                  label={task.category}
+                                  size="small"
+                                  sx={{ height: 20, fontSize: '0.65rem', fontWeight: 600, bgcolor: '#ffffff', color: '#475569', border: '1px solid #e2e8f0' }}
+                                />
+                                <Chip
+                                  label={task.priority}
+                                  size="small"
+                                  sx={{
+                                    height: 20,
+                                    fontSize: '0.65rem',
+                                    fontWeight: 700,
+                                    bgcolor: task.priority?.toLowerCase() === 'high' ? '#fef2f2' : '#fffbeb',
+                                    color: task.priority?.toLowerCase() === 'high' ? '#dc2626' : '#d97706',
+                                  }}
+                                />
+                                <Chip
+                                  label={`${completedCount}/${totalCount} Done`}
+                                  size="small"
+                                  sx={{
+                                    height: 20,
+                                    fontSize: '0.65rem',
+                                    fontWeight: 700,
+                                    bgcolor: totalCount > 0 && completedCount === totalCount ? '#ecfdf5' : '#eff6ff',
+                                    color: totalCount > 0 && completedCount === totalCount ? '#059669' : '#2563eb',
+                                  }}
+                                />
+                              </Stack>
+                            </Box>
+
+                            <Stack direction="row" spacing={0.5}>
+                              <Tooltip title="View User Progress & Evaluation">
+                                <IconButton
+                                  size="small"
+                                  color="primary"
+                                  onClick={() => setProgressTask(task)}
+                                  sx={{ bgcolor: '#eff6ff' }}
+                                >
+                                  <VisibilityIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                              <Tooltip title="Edit Task">
+                                <IconButton
+                                  size="small"
+                                  color="info"
+                                  onClick={() => setEditingTask(task)}
+                                  sx={{ bgcolor: '#f0f9ff' }}
+                                >
+                                  <EditIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                            </Stack>
+                          </Box>
+
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1 }}>
+                            <Typography sx={{ fontSize: '0.75rem', color: '#64748b' }}>
+                              Assigned to:{' '}
+                              {task.assigned_freshers.length === 0
+                                ? 'Unassigned'
+                                : task.assigned_freshers.map((f) => f.first_name).join(', ')}
+                            </Typography>
+                            <Typography sx={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 500 }}>
+                              {task.due_date ? `Due ${new Date(task.due_date).toLocaleDateString()}` : 'No Due Date'}
+                            </Typography>
+                          </Box>
                         </Box>
-                        <Typography sx={{ fontSize: '0.75rem', color: '#64748b' }}>
-                          Assigned to: {task.assigned_freshers.map((f) => f.first_name).join(', ') || 'Unassigned'}
-                          {task.due_date ? ` • Due ${new Date(task.due_date).toLocaleDateString()}` : ''}
-                        </Typography>
-                      </Box>
-                    ))
+                      );
+                    })
                   )}
                 </Stack>
               </Card>

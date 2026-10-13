@@ -8,6 +8,7 @@ import {
   ListItemIcon,
   ListItemText,
   IconButton,
+  Button,
   Typography,
   Avatar,
   Chip,
@@ -52,7 +53,7 @@ export function DashboardLayout({
   const drawerWidth = collapsed ? DRAWER_COLLAPSED_WIDTH : DRAWER_EXPANDED_WIDTH;
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh', width: '100vw', background: '#f8fafc' }}>
+    <Box sx={{ display: 'flex', minHeight: '100vh', width: '100%', background: '#f8fafc' }}>
       {/* ── Collapsible Sidebar ── */}
       <Drawer
         variant="permanent"
@@ -66,6 +67,11 @@ export function DashboardLayout({
             overflowX: 'hidden',
             background: '#ffffff',
             borderRight: '1px solid #e2e8f0',
+            height: '100vh',
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            zIndex: 1200,
           },
         }}
       >
@@ -194,6 +200,7 @@ export function DashboardLayout({
             display: 'flex',
             alignItems: 'center',
             justifyContent: collapsed ? 'center' : 'space-between',
+            background: '#ffffff',
           }}
         >
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minWidth: 0 }}>
@@ -239,7 +246,10 @@ export function DashboardLayout({
           display: 'flex',
           flexDirection: 'column',
           minHeight: '100vh',
-          width: `calc(100vw - ${drawerWidth}px)`,
+          width: `calc(100% - ${drawerWidth}px)`,
+          ml: `${drawerWidth}px`,
+          background: '#f8fafc',
+          transition: 'margin-left 0.25s ease, width 0.25s ease',
         }}
       >
         {/* Top Header */}
@@ -250,6 +260,8 @@ export function DashboardLayout({
             background: '#ffffff',
             borderBottom: '1px solid #e2e8f0',
             color: '#0f172a',
+            top: 0,
+            zIndex: 1100,
           }}
         >
           <Toolbar sx={{ px: { xs: 2, sm: 4 }, minHeight: 64, justifyContent: 'space-between' }}>
@@ -260,18 +272,21 @@ export function DashboardLayout({
             </Box>
 
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <IconButton
+              <Button
                 id="header-logout-btn"
                 onClick={logout}
+                variant="outlined"
                 size="small"
+                startIcon={<LogoutIcon fontSize="small" />}
                 sx={{
                   color: '#64748b',
-                  border: '1px solid #e2e8f0',
+                  borderColor: '#e2e8f0',
                   borderRadius: 2,
-                  px: 1.5,
-                  py: 0.75,
+                  px: 1.75,
+                  py: 0.6,
                   fontSize: '0.85rem',
-                  gap: 1,
+                  fontWeight: 600,
+                  textTransform: 'none',
                   '&:hover': {
                     color: '#ef4444',
                     borderColor: '#fca5a5',
@@ -279,15 +294,14 @@ export function DashboardLayout({
                   },
                 }}
               >
-                <LogoutIcon fontSize="small" />
-                <Typography sx={{ fontSize: '0.85rem', fontWeight: 600 }}>Logout</Typography>
-              </IconButton>
+                Logout
+              </Button>
             </Box>
           </Toolbar>
         </AppBar>
 
         {/* Page Content Viewport */}
-        <Box sx={{ p: { xs: 2.5, sm: 4 }, flexGrow: 1, width: '100%', boxSizing: 'border-box' }}>
+        <Box sx={{ p: { xs: 2.5, sm: 4 }, flexGrow: 1, width: '100%', boxSizing: 'border-box', background: '#f8fafc' }}>
           {children}
         </Box>
       </Box>
