@@ -17,6 +17,8 @@ python-dotenv==1.0.1
 
 # Utilities
 python-multipart==0.0.9
+anyio>=4.3.0
+
 
 # Testing
 pytest==8.2.0

@@ -4,6 +4,9 @@ POST /api/v1/auth/login
 POST /api/v1/auth/refresh
 POST /api/v1/auth/logout
 GET  /api/v1/auth/me
+POST /api/v1/auth/forgot-password
+POST /api/v1/auth/verify-reset-otp
+POST /api/v1/auth/reset-password
 """
 from __future__ import annotations
 
@@ -15,12 +18,16 @@ from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, status
 from app.application.auth.login import LoginUseCase
 from app.application.auth.logout import LogoutUseCase
 from app.application.auth.refresh_token import RefreshTokenUseCase
+from app.application.auth.forgot_password import ForgotPasswordUseCase
+from app.application.auth.verify_otp import VerifyOtpUseCase
+from app.application.auth.reset_password import ResetPasswordUseCase
 from app.config import get_settings
 from app.dependencies import (
     get_current_user,
     get_jwt_service,
     get_password_hasher,
     get_user_repository,
+    get_password_reset_repository,
 )
 from app.domain.entities.user import User
 from app.domain.exceptions.authentication import (
@@ -30,11 +37,32 @@ from app.domain.exceptions.authentication import (
     TokenExpiredError,
     TokenInvalidError,
 )
+from app.domain.exceptions.password_reset import (
+    OtpExpiredError,
+    OtpInvalidError,
+    OtpMaxAttemptsError,
+    OtpAlreadyConsumedError,
+    ResetTokenInvalidError,
+    ResetTokenExpiredError,
+)
 from app.domain.enums.user_role import UserRole
 from app.infrastructure.auth.jwt import JWTService
 from app.infrastructure.auth.password import PasswordHasher
 from app.infrastructure.database.repositories.user_repository import UserRepository
-from app.schemas.auth import ApiResponse, LoginRequest, RegisterRequest, RefreshResponse, TokenResponse, UserResponse
+from app.infrastructure.database.repositories.password_reset_repository import PasswordResetRepository
+from app.infrastructure.email.email_service import send_otp_email
+from app.schemas.auth import (
+    ApiResponse,
+    ForgotPasswordRequest,
+    LoginRequest,
+    RegisterRequest,
+    RefreshResponse,
+    ResetPasswordRequest,
+    TokenResponse,
+    UserResponse,
+    VerifyOtpRequest,
+    VerifyOtpResponse,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -259,3 +287,118 @@ async def get_me(
 ) -> ApiResponse:
     """Return the currently authenticated user."""
     return ApiResponse.success(_user_to_response(current_user).model_dump())
+
+
+# ── POST /auth/forgot-password ────────────────────────────────────────────────
+
+@router.post("/forgot-password", response_model=ApiResponse, status_code=status.HTTP_200_OK)
+async def forgot_password(
+    body: ForgotPasswordRequest,
+    user_repo: UserRepository = Depends(get_user_repository),
+    reset_repo: PasswordResetRepository = Depends(get_password_reset_repository),
+) -> ApiResponse:
+    """Initiate the password-reset flow by sending an OTP to the supplied email.
+
+    Always returns a generic success response — email existence is never
+    disclosed to prevent account enumeration.
+    """
+    use_case = ForgotPasswordUseCase(
+        user_repo=user_repo,
+        reset_repo=reset_repo,
+        send_otp_email=send_otp_email,
+    )
+
+    try:
+        await use_case.execute(body.email)
+    except Exception as exc:
+        # Any email-delivery failure is logged inside the use case; respond
+        # generically so the caller cannot infer whether the email existed.
+        logger.error(
+            "forgot_password.delivery_error",
+            extra={"error_type": type(exc).__name__},
+        )
+
+    return ApiResponse.success(
+        {"message": "If that email is registered, you will receive a verification code shortly."}
+    )
+
+
+# ── POST /auth/verify-reset-otp ───────────────────────────────────────────────
+
+@router.post("/verify-reset-otp", response_model=ApiResponse, status_code=status.HTTP_200_OK)
+async def verify_reset_otp(
+    body: VerifyOtpRequest,
+    user_repo: UserRepository = Depends(get_user_repository),
+    reset_repo: PasswordResetRepository = Depends(get_password_reset_repository),
+) -> ApiResponse:
+    """Verify the OTP and return a short-lived password-reset authorisation token.
+
+    The returned reset_token must be supplied to /reset-password and must NOT
+    be persisted in browser storage.
+    """
+    use_case = VerifyOtpUseCase(reset_repo=reset_repo, user_repo=user_repo)
+
+    try:
+        raw_token = await use_case.execute(body.email, body.otp)
+    except OtpExpiredError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "OTP_EXPIRED", "message": exc.message},
+        )
+    except OtpMaxAttemptsError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail={"code": "OTP_MAX_ATTEMPTS", "message": exc.message},
+        )
+    except (OtpInvalidError, OtpAlreadyConsumedError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "OTP_INVALID", "message": exc.message},
+        )
+
+    return ApiResponse.success(
+        VerifyOtpResponse(reset_token=raw_token).model_dump()
+    )
+
+
+# ── POST /auth/reset-password ─────────────────────────────────────────────────
+
+@router.post("/reset-password", response_model=ApiResponse, status_code=status.HTTP_200_OK)
+async def reset_password(
+    body: ResetPasswordRequest,
+    reset_repo: PasswordResetRepository = Depends(get_password_reset_repository),
+    password_hasher: PasswordHasher = Depends(get_password_hasher),
+) -> ApiResponse:
+    """Reset the user's password using a valid, unexpired reset token.
+
+    The reset token is consumed atomically; subsequent calls with the same
+    token will be rejected.
+    """
+    use_case = ResetPasswordUseCase(
+        reset_repo=reset_repo,
+        password_hasher=password_hasher,
+    )
+
+    try:
+        await use_case.execute(
+            reset_token=body.reset_token,
+            new_password=body.new_password,
+            confirm_password=body.confirm_password,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"code": "VALIDATION_ERROR", "message": str(exc)},
+        )
+    except ResetTokenExpiredError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "RESET_TOKEN_EXPIRED", "message": exc.message},
+        )
+    except ResetTokenInvalidError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "RESET_TOKEN_INVALID", "message": exc.message},
+        )
+
+    return ApiResponse.success({"message": "Password has been reset successfully. Please log in."})

@@ -48,3 +48,24 @@ export interface AuthState {
   isInitializing: boolean;
   error: string | null;
 }
+
+// ── Forgot-password flow types ───────────────────────────────────────────────
+
+export interface ForgotPasswordRequest {
+  email: string;
+}
+
+export interface VerifyOtpRequest {
+  email: string;
+  otp: string;
+}
+
+export interface VerifyOtpResponse {
+  reset_token: string;
+}
+
+export interface ResetPasswordRequest {
+  reset_token: string;
+  new_password: string;
+  confirm_password: string;
+}

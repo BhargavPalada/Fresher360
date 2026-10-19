@@ -24,7 +24,9 @@ from app.infrastructure.auth.password import PasswordHasher
 from app.application.tasks.task_service import TaskService
 from app.infrastructure.database.repositories.task_repository import TaskRepository
 from app.infrastructure.database.repositories.user_repository import UserRepository
+from app.infrastructure.database.repositories.password_reset_repository import PasswordResetRepository
 from app.infrastructure.database.session import AsyncSession, get_db
+
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +59,10 @@ def get_task_service(
     task_repo: TaskRepository = Depends(get_task_repository),
 ) -> TaskService:
     return TaskService(task_repo)
+
+
+def get_password_reset_repository(session: AsyncSession = Depends(get_db)) -> PasswordResetRepository:
+    return PasswordResetRepository(session)
 
 
 # ── Authentication ────────────────────────────────────────────────────────────

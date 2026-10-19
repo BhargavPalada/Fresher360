@@ -3,9 +3,13 @@ import { baseQueryWithReauth } from '../../../services/api/baseApi';
 import type {
   ApiResponse,
   AuthUser,
+  ForgotPasswordRequest,
   LoginRequest,
   RegisterRequest,
+  ResetPasswordRequest,
   TokenResponse,
+  VerifyOtpRequest,
+  VerifyOtpResponse,
 } from '../types/auth.types';
 
 export const authApi = createApi({
@@ -61,6 +65,41 @@ export const authApi = createApi({
         method: 'POST',
       }),
     }),
+
+    /**
+     * Forgot password: send OTP to registered email address.
+     * Always returns generic success — never discloses email existence.
+     */
+    forgotPassword: builder.mutation<ApiResponse<{ message: string }>, ForgotPasswordRequest>({
+      query: (body) => ({
+        url: '/auth/forgot-password',
+        method: 'POST',
+        body,
+      }),
+    }),
+
+    /**
+     * Verify OTP: validate 6-digit code and receive a short-lived reset token.
+     * The reset token must NOT be persisted in localStorage/sessionStorage.
+     */
+    verifyOtp: builder.mutation<ApiResponse<VerifyOtpResponse>, VerifyOtpRequest>({
+      query: (body) => ({
+        url: '/auth/verify-reset-otp',
+        method: 'POST',
+        body,
+      }),
+    }),
+
+    /**
+     * Reset password: submit reset token + new password to update credentials.
+     */
+    resetPassword: builder.mutation<ApiResponse<{ message: string }>, ResetPasswordRequest>({
+      query: (body) => ({
+        url: '/auth/reset-password',
+        method: 'POST',
+        body,
+      }),
+    }),
   }),
 });
 
@@ -70,4 +109,7 @@ export const {
   useRefreshTokenMutation,
   useGetCurrentUserQuery,
   useLogoutMutation,
+  useForgotPasswordMutation,
+  useVerifyOtpMutation,
+  useResetPasswordMutation,
 } = authApi;
