@@ -9,12 +9,14 @@ import { configureStore } from '@reduxjs/toolkit';
 import { LoginForm } from '../LoginForm';
 import authReducer from '../../../authSlice';
 
+const mockNavigate = vi.fn();
+
 // Mock useNavigate
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom');
   return {
     ...actual,
-    useNavigate: () => vi.fn(),
+    useNavigate: () => mockNavigate,
   };
 });
 
@@ -125,5 +127,17 @@ describe('LoginForm', () => {
     await user.click(registerLink);
 
     expect(screen.getByRole('heading', { name: /create an account/i })).toBeInTheDocument();
+  });
+
+  it('navigates to forgot password page when clicking forgot password link', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<LoginForm />);
+
+    const forgotLink = screen.getByRole('button', { name: /forgot password\?/i });
+    expect(forgotLink).toBeInTheDocument();
+
+    await user.click(forgotLink);
+
+    expect(mockNavigate).toHaveBeenCalledWith('/forgot-password');
   });
 });

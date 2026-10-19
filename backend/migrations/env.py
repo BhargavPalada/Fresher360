@@ -20,6 +20,10 @@ from app.infrastructure.database.session import Base
 # Import all models so Alembic knows about them
 from app.infrastructure.database.models.user import UserModel  # noqa: F401
 from app.infrastructure.database.models.task import TaskModel, TaskAssignmentModel  # noqa: F401
+from app.infrastructure.database.models.password_reset import (  # noqa: F401
+    OtpChallengeModel,
+    PasswordResetTokenModel,
+)
 
 settings = get_settings()
 
@@ -70,6 +74,9 @@ async def run_async_migrations() -> None:
 
 
 def run_migrations_online() -> None:
+    import sys
+    if sys.platform == "win32":
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
     asyncio.run(run_async_migrations())
 
 

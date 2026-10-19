@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -32,6 +33,7 @@ const loginSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 export function LoginForm() {
+  const navigate = useNavigate();
   const { login, isLoading } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
@@ -182,14 +184,19 @@ export function LoginForm() {
           />
 
           <Link
-            href="#"
-            onClick={(e) => e.preventDefault()}
+            component="button"
+            type="button"
+            id="forgot-password-link"
+            onClick={() => navigate('/forgot-password')}
             underline="hover"
             sx={{
               fontSize: '0.85rem',
               fontWeight: 500,
               color: '#2563eb',
               cursor: 'pointer',
+              border: 'none',
+              background: 'none',
+              p: 0,
             }}
           >
             Forgot Password?

@@ -4,6 +4,9 @@ import { useDispatch, useSelector } from 'react-redux';
 import { ProtectedRoute } from '../features/auth/components/ProtectedRoute';
 import { RoleRoute } from '../features/auth/components/RoleRoute';
 import LoginPage from '../pages/LoginPage';
+import ForgotPasswordPage from '../pages/ForgotPasswordPage';
+import VerifyOtpPage from '../pages/VerifyOtpPage';
+import ResetPasswordPage from '../pages/ResetPasswordPage';
 import AdminHomePage from '../pages/admin/AdminHomePage';
 import UserHomePage from '../pages/user/UserHomePage';
 import UnauthorizedPage from '../pages/UnauthorizedPage';
@@ -73,6 +76,22 @@ const router = createBrowserRouter([
   {
     path: '/login',
     element: <LoginPage />,
+  },
+  {
+    path: '/forgot-password',
+    element: <ForgotPasswordPage />,
+  },
+  {
+    path: '/reset-password',
+    element: <Navigate to="/forgot-password" replace />,
+  },
+  {
+    path: '/reset-password/verify',
+    element: <VerifyOtpPage />,
+  },
+  {
+    path: '/reset-password/new',
+    element: <ResetPasswordPage />,
   },
   {
     path: '/unauthorized',

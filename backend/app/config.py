@@ -48,6 +48,27 @@ class Settings(BaseSettings):
     SEED_USER_FIRST_NAME: str = "John"
     SEED_USER_LAST_NAME: str = "Doe"
 
+    # ── Email (SMTP) ──────────────────────────────────────────────────────────
+    MAIL_SERVER: str = "smtp.gmail.com"
+    MAIL_PORT: int = 587
+    MAIL_USERNAME: str = ""
+    MAIL_PASSWORD: str = ""
+    MAIL_FROM: str = "noreply@fresher360.com"
+    MAIL_FROM_NAME: str = "Fresher360"
+    MAIL_STARTTLS: bool = True
+    MAIL_SSL_TLS: bool = False
+    USE_CREDENTIALS: bool = True
+    VALIDATE_CERTS: bool = False
+
+    # ── OTP / Password-reset ─────────────────────────────────────────────────
+    # HMAC key for OTP verifier — must be at least 32 chars in production.
+    OTP_HMAC_SECRET: str = "REPLACE_WITH_SECURE_RANDOM_OTP_HMAC_KEY_MIN_32_CHARS"
+    OTP_EXPIRE_MINUTES: int = 5
+    OTP_MAX_ATTEMPTS: int = 5
+    OTP_RATE_LIMIT_COUNT: int = 3
+    OTP_RATE_LIMIT_WINDOW_MINUTES: int = 10
+    RESET_TOKEN_EXPIRE_MINUTES: int = 15
+
     # ── App ──────────────────────────────────────────────────────────────────
     APP_ENV: str = "development"
     DEBUG: bool = True

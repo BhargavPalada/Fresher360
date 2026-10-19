@@ -89,3 +89,38 @@ class RefreshResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: UserResponse | None = None
+
+
+# ── Forgot Password / OTP schemas ────────────────────────────────────────────
+
+class ForgotPasswordRequest(BaseModel):
+    """Request to initiate the forgot-password OTP flow."""
+    email: EmailStr = Field(..., description="Registered user email address")
+
+
+class VerifyOtpRequest(BaseModel):
+    """Verify the 6-digit OTP to obtain a short-lived reset token."""
+    email: EmailStr = Field(..., description="Email address the OTP was sent to")
+    otp: str = Field(
+        ...,
+        min_length=6,
+        max_length=6,
+        pattern=r"^\d{6}$",
+        description="6-digit numeric OTP",
+    )
+
+
+class VerifyOtpResponse(BaseModel):
+    """Returned on successful OTP verification."""
+    reset_token: str = Field(..., description="Short-lived password-reset authorisation token")
+
+
+class ResetPasswordRequest(BaseModel):
+    """Request to set a new password using a valid reset token."""
+    reset_token: str = Field(..., min_length=1, description="Reset token from verify-otp step")
+    new_password: str = Field(
+        ...,
+        min_length=8,
+        description="New password (min 8 chars, upper+lower+digit+special)",
+    )
+    confirm_password: str = Field(..., min_length=1, description="Must match new_password")
