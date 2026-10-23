@@ -209,7 +209,7 @@ export default function VerifyOtpPage() {
                 htmlFor="otp-input"
                 sx={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: '#334155', mb: 0.75 }}
               >
-                Verification Code
+                Verification Code <Box component="span" sx={{ color: '#ef4444' }}>*</Box>
               </Typography>
               <TextField
                 id="otp-input"
@@ -224,6 +224,7 @@ export default function VerifyOtpPage() {
                 helperText={errors.otp?.message}
                 slotProps={{
                   htmlInput: {
+                    'aria-label': 'Verification Code',
                     maxLength: 6,
                     style: { textAlign: 'center', fontSize: '1.5rem', letterSpacing: '0.4em', fontWeight: 700 },
                   },

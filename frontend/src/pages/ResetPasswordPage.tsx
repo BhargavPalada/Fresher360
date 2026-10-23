@@ -208,7 +208,7 @@ export default function ResetPasswordPage() {
                 htmlFor="new-password"
                 sx={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: '#334155', mb: 0.75 }}
               >
-                New Password
+                New Password <Box component="span" sx={{ color: '#ef4444' }}>*</Box>
               </Typography>
               <TextField
                 id="new-password"
@@ -221,6 +221,7 @@ export default function ResetPasswordPage() {
                 error={!!errors.new_password}
                 helperText={errors.new_password?.message}
                 slotProps={{
+                  htmlInput: { 'aria-label': 'New Password' },
                   input: {
                     endAdornment: (
                       <InputAdornment position="end">
@@ -249,7 +250,7 @@ export default function ResetPasswordPage() {
                 htmlFor="confirm-password"
                 sx={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: '#334155', mb: 0.75 }}
               >
-                Confirm Password
+                Confirm Password <Box component="span" sx={{ color: '#ef4444' }}>*</Box>
               </Typography>
               <TextField
                 id="confirm-password"
@@ -261,6 +262,7 @@ export default function ResetPasswordPage() {
                 error={!!errors.confirm_password}
                 helperText={errors.confirm_password?.message}
                 slotProps={{
+                  htmlInput: { 'aria-label': 'Confirm Password' },
                   input: {
                     endAdornment: (
                       <InputAdornment position="end">

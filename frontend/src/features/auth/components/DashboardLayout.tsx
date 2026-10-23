@@ -60,6 +60,9 @@ export function DashboardLayout({
         sx={{
           width: drawerWidth,
           flexShrink: 0,
+          whiteSpace: 'nowrap',
+          boxSizing: 'border-box',
+          transition: 'width 0.25s ease',
           '& .MuiDrawer-paper': {
             width: drawerWidth,
             boxSizing: 'border-box',
@@ -121,17 +124,21 @@ export function DashboardLayout({
           </Box>
 
           {!collapsed && (
-            <IconButton size="small" onClick={() => setCollapsed(true)} sx={{ color: '#64748b' }}>
-              <ChevronLeftIcon />
-            </IconButton>
+            <Tooltip title="Collapse sidebar" placement="left" arrow>
+              <IconButton size="small" onClick={() => setCollapsed(true)} sx={{ color: '#64748b' }}>
+                <ChevronLeftIcon />
+              </IconButton>
+            </Tooltip>
           )}
         </Box>
 
         {collapsed && (
           <Box sx={{ display: 'flex', justifyContent: 'center', py: 1 }}>
-            <IconButton size="small" onClick={() => setCollapsed(false)} sx={{ color: '#64748b' }}>
-              <MenuIcon />
-            </IconButton>
+            <Tooltip title="Expand sidebar" placement="right" arrow>
+              <IconButton size="small" onClick={() => setCollapsed(false)} sx={{ color: '#64748b' }}>
+                <MenuIcon />
+              </IconButton>
+            </Tooltip>
           </Box>
         )}
 
@@ -204,17 +211,34 @@ export function DashboardLayout({
           }}
         >
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minWidth: 0 }}>
-            <Avatar
-              sx={{
-                width: 36,
-                height: 36,
-                bgcolor: '#2563eb',
-                fontSize: '0.9rem',
-                fontWeight: 600,
-              }}
-            >
-              {user?.first_name?.charAt(0) ?? 'U'}
-            </Avatar>
+            {collapsed ? (
+              <Tooltip title={`${user?.first_name ?? 'User'} ${user?.last_name ?? ''} (${roleBadge})`} placement="right" arrow>
+                <Avatar
+                  sx={{
+                    width: 36,
+                    height: 36,
+                    bgcolor: '#2563eb',
+                    fontSize: '0.9rem',
+                    fontWeight: 600,
+                    cursor: 'default',
+                  }}
+                >
+                  {user?.first_name?.charAt(0) ?? 'U'}
+                </Avatar>
+              </Tooltip>
+            ) : (
+              <Avatar
+                sx={{
+                  width: 36,
+                  height: 36,
+                  bgcolor: '#2563eb',
+                  fontSize: '0.9rem',
+                  fontWeight: 600,
+                }}
+              >
+                {user?.first_name?.charAt(0) ?? 'U'}
+              </Avatar>
+            )}
             {!collapsed && (
               <Box sx={{ minWidth: 0, overflow: 'hidden' }}>
                 <Typography noWrap sx={{ fontSize: '0.85rem', fontWeight: 600, color: '#0f172a' }}>
@@ -246,10 +270,7 @@ export function DashboardLayout({
           display: 'flex',
           flexDirection: 'column',
           minHeight: '100vh',
-          width: `calc(100% - ${drawerWidth}px)`,
-          ml: `${drawerWidth}px`,
           background: '#f8fafc',
-          transition: 'margin-left 0.25s ease, width 0.25s ease',
         }}
       >
         {/* Top Header */}

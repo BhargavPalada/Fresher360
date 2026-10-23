@@ -373,6 +373,7 @@ export function UserProgressModal({ open, onClose, task }: UserProgressModalProp
                                 <TextField
                                   select
                                   label="Task Status"
+                                  required
                                   size="small"
                                   fullWidth
                                   value={evalForm.status}
@@ -390,6 +391,7 @@ export function UserProgressModal({ open, onClose, task }: UserProgressModalProp
                                 <TextField
                                   select
                                   label="Assessment Status"
+                                  required
                                   size="small"
                                   fullWidth
                                   value={evalForm.assessment_status}

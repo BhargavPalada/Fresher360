@@ -170,7 +170,7 @@ export function AddUserModal({ open, onClose }: AddUserModalProps) {
                   htmlFor="add-first-name"
                   sx={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#334155', mb: 0.75 }}
                 >
-                  First Name
+                  First Name <Box component="span" sx={{ color: '#ef4444' }}>*</Box>
                 </Typography>
                 <TextField
                   id="add-first-name"
@@ -180,6 +180,9 @@ export function AddUserModal({ open, onClose }: AddUserModalProps) {
                   {...register('first_name')}
                   error={!!errors.first_name}
                   helperText={errors.first_name?.message}
+                  slotProps={{
+                    htmlInput: { 'aria-label': 'First Name' },
+                  }}
                   sx={inputStyle}
                 />
               </Box>
@@ -190,7 +193,7 @@ export function AddUserModal({ open, onClose }: AddUserModalProps) {
                   htmlFor="add-last-name"
                   sx={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#334155', mb: 0.75 }}
                 >
-                  Last Name
+                  Last Name <Box component="span" sx={{ color: '#ef4444' }}>*</Box>
                 </Typography>
                 <TextField
                   id="add-last-name"
@@ -199,6 +202,9 @@ export function AddUserModal({ open, onClose }: AddUserModalProps) {
                   {...register('last_name')}
                   error={!!errors.last_name}
                   helperText={errors.last_name?.message}
+                  slotProps={{
+                    htmlInput: { 'aria-label': 'Last Name' },
+                  }}
                   sx={inputStyle}
                 />
               </Box>
@@ -211,7 +217,7 @@ export function AddUserModal({ open, onClose }: AddUserModalProps) {
                 htmlFor="add-user-email"
                 sx={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#334155', mb: 0.75 }}
               >
-                Email Address
+                Email Address <Box component="span" sx={{ color: '#ef4444' }}>*</Box>
               </Typography>
               <TextField
                 id="add-user-email"
@@ -221,6 +227,9 @@ export function AddUserModal({ open, onClose }: AddUserModalProps) {
                 {...register('email')}
                 error={!!errors.email}
                 helperText={errors.email?.message}
+                slotProps={{
+                  htmlInput: { 'aria-label': 'Email Address' },
+                }}
                 sx={inputStyle}
               />
             </Box>
@@ -232,7 +241,7 @@ export function AddUserModal({ open, onClose }: AddUserModalProps) {
                 htmlFor="add-user-password"
                 sx={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#334155', mb: 0.75 }}
               >
-                Initial Password
+                Initial Password <Box component="span" sx={{ color: '#ef4444' }}>*</Box>
               </Typography>
               <TextField
                 id="add-user-password"
@@ -243,6 +252,7 @@ export function AddUserModal({ open, onClose }: AddUserModalProps) {
                 error={!!errors.password}
                 helperText={errors.password?.message}
                 slotProps={{
+                  htmlInput: { 'aria-label': 'Initial Password' },
                   input: {
                     endAdornment: (
                       <InputAdornment position="end">
@@ -270,9 +280,9 @@ export function AddUserModal({ open, onClose }: AddUserModalProps) {
                 htmlFor="add-user-role-select"
                 sx={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#334155', mb: 0.75 }}
               >
-                Assign Role
+                Assign Role <Box component="span" sx={{ color: '#ef4444' }}>*</Box>
               </Typography>
-              <FormControl fullWidth>
+              <FormControl fullWidth required>
                 <Select
                   id="add-user-role-select"
                   value={selectedRole}
