@@ -123,7 +123,7 @@ export function EditTaskModal({ open, onClose, task }: EditTaskModalProps) {
         <DialogContent dividers>
           <Stack spacing={2.5} sx={{ mt: 0.5 }}>
             <TextField
-              label="Task Title *"
+              label="Task Title"
               required
               fullWidth
               value={formData.title}
@@ -131,7 +131,7 @@ export function EditTaskModal({ open, onClose, task }: EditTaskModalProps) {
             />
 
             <TextField
-              label="Description *"
+              label="Description"
               required
               multiline
               rows={3}
@@ -143,7 +143,7 @@ export function EditTaskModal({ open, onClose, task }: EditTaskModalProps) {
             <Stack direction="row" spacing={2}>
               <TextField
                 select
-                label="Category *"
+                label="Category"
                 required
                 fullWidth
                 value={formData.category}
@@ -156,7 +156,7 @@ export function EditTaskModal({ open, onClose, task }: EditTaskModalProps) {
 
               <TextField
                 select
-                label="Priority *"
+                label="Priority"
                 required
                 fullWidth
                 value={formData.priority}
@@ -169,7 +169,7 @@ export function EditTaskModal({ open, onClose, task }: EditTaskModalProps) {
 
               <TextField
                 select
-                label="Status *"
+                label="Status"
                 required
                 fullWidth
                 value={formData.status}
@@ -183,7 +183,7 @@ export function EditTaskModal({ open, onClose, task }: EditTaskModalProps) {
 
             <TextField
               type="date"
-              label="Due Date *"
+              label="Due Date"
               required
               slotProps={{ inputLabel: { shrink: true } }}
               fullWidth
@@ -194,7 +194,7 @@ export function EditTaskModal({ open, onClose, task }: EditTaskModalProps) {
             <Box>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
                 <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 600 }}>
-                  Assigned User(s) *
+                  Assigned User(s) <Box component="span" sx={{ color: '#ef4444' }}>*</Box>
                 </Typography>
                 {freshers.length > 0 && (
                   <Button
@@ -216,7 +216,7 @@ export function EditTaskModal({ open, onClose, task }: EditTaskModalProps) {
                 )}
               </Box>
               <FormControl fullWidth required>
-                <InputLabel>Assigned User(s) *</InputLabel>
+                <InputLabel>Assigned User(s)</InputLabel>
                 <Select
                   multiple
                   value={formData.assigned_fresher_ids}
@@ -227,7 +227,7 @@ export function EditTaskModal({ open, onClose, task }: EditTaskModalProps) {
                       assigned_fresher_ids: typeof value === 'string' ? value.split(',') : value,
                     });
                   }}
-                  label="Assigned User(s) *"
+                  label="Assigned User(s)"
                   renderValue={(selected) => (
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                       {selected.map((value) => {

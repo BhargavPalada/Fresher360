@@ -15,6 +15,7 @@ from app.application.auth.forgot_password import (
     OTP_LENGTH,
     OTP_RATE_LIMIT_COUNT,
 )
+from app.domain.exceptions.authentication import EmailNotFoundError
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────
@@ -94,14 +95,15 @@ class TestForgotPasswordUseCase:
         reset_repo.create_otp_challenge.assert_awaited_once()
 
     @pytest.mark.asyncio
-    async def test_does_not_send_email_for_unknown_user(self) -> None:
+    async def test_raises_error_for_unknown_user(self) -> None:
         user_repo, reset_repo = _make_repos(user=None)
         send_email = AsyncMock()
 
         uc = ForgotPasswordUseCase(
             user_repo=user_repo, reset_repo=reset_repo, send_otp_email=send_email
         )
-        await uc.execute("unknown@test.com")
+        with pytest.raises(EmailNotFoundError):
+            await uc.execute("unknown@test.com")
 
         send_email.assert_not_awaited()
         reset_repo.create_otp_challenge.assert_not_awaited()
@@ -118,17 +120,6 @@ class TestForgotPasswordUseCase:
         await uc.execute("user@test.com")
 
         send_email.assert_not_awaited()
-
-    @pytest.mark.asyncio
-    async def test_returns_none_regardless_of_email_existence(self) -> None:
-        """Always returns None — no exception raised for unknown email."""
-        user_repo, reset_repo = _make_repos(user=None)
-        send_email = AsyncMock()
-        uc = ForgotPasswordUseCase(
-            user_repo=user_repo, reset_repo=reset_repo, send_otp_email=send_email
-        )
-        result = await uc.execute("no-such@user.com")
-        assert result is None
 
     @pytest.mark.asyncio
     async def test_email_normalised_before_use(self) -> None:

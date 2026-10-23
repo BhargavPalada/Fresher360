@@ -54,10 +54,19 @@ export function LoginForm() {
     try {
       await login({ email: data.email, password: data.password });
     } catch (err: unknown) {
-      const apiErr = err as { data?: { error?: { message?: string } } };
-      setServerError(
-        apiErr?.data?.error?.message ?? 'Login failed. Please try again.'
-      );
+      const apiErr = err as {
+        data?: {
+          error?: { message?: string; code?: string };
+          detail?: string | { message?: string; code?: string };
+        };
+      };
+      const message =
+        apiErr?.data?.error?.message ||
+        (typeof apiErr?.data?.detail === 'object'
+          ? apiErr.data.detail?.message
+          : apiErr?.data?.detail) ||
+        'Login failed. Please check your credentials and try again.';
+      setServerError(message);
     }
   };
 
@@ -95,7 +104,7 @@ export function LoginForm() {
               mb: 0.75,
             }}
           >
-            Email
+            Email <Box component="span" sx={{ color: '#ef4444' }}>*</Box>
           </Typography>
           <TextField
             id="login-email"
@@ -107,6 +116,9 @@ export function LoginForm() {
             {...register('email')}
             error={!!errors.email}
             helperText={errors.email?.message}
+            slotProps={{
+              htmlInput: { 'aria-label': 'Email' },
+            }}
             sx={inputStyle}
           />
         </Box>
@@ -123,7 +135,7 @@ export function LoginForm() {
               mb: 0.75,
             }}
           >
-            Password
+            Password <Box component="span" sx={{ color: '#ef4444' }}>*</Box>
           </Typography>
           <TextField
             id="login-password"
@@ -135,6 +147,7 @@ export function LoginForm() {
             error={!!errors.password}
             helperText={errors.password?.message}
             slotProps={{
+              htmlInput: { 'aria-label': 'Password' },
               input: {
                 endAdornment: (
                   <InputAdornment position="end">

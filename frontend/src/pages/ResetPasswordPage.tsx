@@ -155,14 +155,28 @@ export default function ResetPasswordPage() {
       }).unwrap();
       setSuccess(true);
     } catch (err: unknown) {
-      const apiErr = err as { data?: { detail?: { message?: string; code?: string } } };
-      const code = apiErr?.data?.detail?.code;
+      const apiErr = err as {
+        data?: {
+          error?: { message?: string; code?: string };
+          detail?: string | { message?: string; code?: string };
+        };
+      };
+      const code =
+        apiErr?.data?.error?.code ||
+        (typeof apiErr?.data?.detail === 'object' ? apiErr.data.detail?.code : undefined);
+      const message =
+        apiErr?.data?.error?.message ||
+        (typeof apiErr?.data?.detail === 'object'
+          ? apiErr.data.detail?.message
+          : apiErr?.data?.detail) ||
+        'Something went wrong. Please try again.';
+
       if (code === 'RESET_TOKEN_EXPIRED') {
         setServerError('Your reset session has expired. Please request a new code.');
       } else if (code === 'RESET_TOKEN_INVALID') {
         setServerError('Invalid or already used reset link. Please request a new code.');
       } else {
-        setServerError(apiErr?.data?.detail?.message ?? 'Something went wrong. Please try again.');
+        setServerError(message);
       }
     }
   };
@@ -208,7 +222,7 @@ export default function ResetPasswordPage() {
                 htmlFor="new-password"
                 sx={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: '#334155', mb: 0.75 }}
               >
-                New Password
+                New Password <Box component="span" sx={{ color: '#ef4444' }}>*</Box>
               </Typography>
               <TextField
                 id="new-password"
@@ -221,6 +235,7 @@ export default function ResetPasswordPage() {
                 error={!!errors.new_password}
                 helperText={errors.new_password?.message}
                 slotProps={{
+                  htmlInput: { 'aria-label': 'New Password' },
                   input: {
                     endAdornment: (
                       <InputAdornment position="end">
@@ -249,7 +264,7 @@ export default function ResetPasswordPage() {
                 htmlFor="confirm-password"
                 sx={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: '#334155', mb: 0.75 }}
               >
-                Confirm Password
+                Confirm Password <Box component="span" sx={{ color: '#ef4444' }}>*</Box>
               </Typography>
               <TextField
                 id="confirm-password"
@@ -261,6 +276,7 @@ export default function ResetPasswordPage() {
                 error={!!errors.confirm_password}
                 helperText={errors.confirm_password?.message}
                 slotProps={{
+                  htmlInput: { 'aria-label': 'Confirm Password' },
                   input: {
                     endAdornment: (
                       <InputAdornment position="end">

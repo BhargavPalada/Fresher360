@@ -38,6 +38,22 @@ const appTheme = createTheme({
         },
       },
     },
+    MuiFormLabel: {
+      styleOverrides: {
+        asterisk: {
+          color: '#ef4444',
+          fontWeight: 700,
+        },
+      },
+    },
+    MuiInputLabel: {
+      styleOverrides: {
+        asterisk: {
+          color: '#ef4444',
+          fontWeight: 700,
+        },
+      },
+    },
   },
 });
 

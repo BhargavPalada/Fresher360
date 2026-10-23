@@ -13,7 +13,11 @@ from httpx import AsyncClient
 
 from app.domain.entities.user import User
 from app.domain.enums.user_role import UserRole
-from app.domain.exceptions.authentication import InvalidCredentialsError
+from app.domain.exceptions.authentication import (
+    InvalidCredentialsError,
+    EmailNotFoundError,
+    WrongPasswordError,
+)
 from app.infrastructure.auth.jwt import JWTService
 from app.main import app
 
@@ -101,6 +105,42 @@ class TestLoginEndpoint:
             json={"email": "user@example.com"},
         )
         assert response.status_code == 422
+
+    async def test_unknown_email_returns_404(self, client: AsyncClient) -> None:
+        with (
+            patch(
+                "app.api.v1.auth.LoginUseCase.execute",
+                new_callable=AsyncMock,
+                side_effect=EmailNotFoundError(),
+            ),
+            patch("app.dependencies.get_db"),
+        ):
+            response = await client.post(
+                "/api/v1/auth/login",
+                json={"email": "notfound@example.com", "password": "password123"},
+            )
+        assert response.status_code == 404
+        body = response.json()
+        assert body["error"]["code"] == "EMAIL_NOT_FOUND"
+        assert "No account found with this email" in body["error"]["message"]
+
+    async def test_wrong_password_returns_401(self, client: AsyncClient) -> None:
+        with (
+            patch(
+                "app.api.v1.auth.LoginUseCase.execute",
+                new_callable=AsyncMock,
+                side_effect=WrongPasswordError(),
+            ),
+            patch("app.dependencies.get_db"),
+        ):
+            response = await client.post(
+                "/api/v1/auth/login",
+                json={"email": "existing@example.com", "password": "wrongpassword"},
+            )
+        assert response.status_code == 401
+        body = response.json()
+        assert body["error"]["code"] == "INVALID_PASSWORD"
+        assert "Incorrect password" in body["error"]["message"]
 
 
 class TestMeEndpoint:

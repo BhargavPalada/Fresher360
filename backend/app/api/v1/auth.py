@@ -32,10 +32,12 @@ from app.dependencies import (
 from app.domain.entities.user import User
 from app.domain.exceptions.authentication import (
     AuthenticationError,
+    EmailNotFoundError,
     InactiveUserError,
     InvalidCredentialsError,
     TokenExpiredError,
     TokenInvalidError,
+    WrongPasswordError,
 )
 from app.domain.exceptions.password_reset import (
     OtpExpiredError,
@@ -148,6 +150,16 @@ async def login(
 
     try:
         result = await use_case.execute(body.email, body.password)
+    except EmailNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "EMAIL_NOT_FOUND", "message": "No account found with this email address. Please register or check your email."},
+        )
+    except WrongPasswordError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"code": "INVALID_PASSWORD", "message": "Incorrect password. Please try again."},
+        )
     except InvalidCredentialsError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -310,16 +322,23 @@ async def forgot_password(
 
     try:
         await use_case.execute(body.email)
+    except EmailNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "EMAIL_NOT_FOUND", "message": "No account found with this email address. Please register or check your email."},
+        )
     except Exception as exc:
-        # Any email-delivery failure is logged inside the use case; respond
-        # generically so the caller cannot infer whether the email existed.
         logger.error(
             "forgot_password.delivery_error",
             extra={"error_type": type(exc).__name__},
         )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"code": "EMAIL_DELIVERY_FAILED", "message": "Failed to send verification code. Please try again later."},
+        )
 
     return ApiResponse.success(
-        {"message": "If that email is registered, you will receive a verification code shortly."}
+        {"message": "A verification code has been sent to your email address."}
     )
 
 

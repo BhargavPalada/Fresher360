@@ -27,6 +27,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Protocol
 
 from app.config import get_settings
+from app.domain.exceptions.authentication import EmailNotFoundError
 
 logger = logging.getLogger(__name__)
 _settings = get_settings()
@@ -91,8 +92,8 @@ class ForgotPasswordUseCase:
     async def execute(self, email: str) -> None:
         """Initiate the password-reset OTP flow for *email*.
 
-        Always succeeds from the caller's perspective — never reveals whether
-        the email is registered.
+        Checks whether the email exists first. If found, generates and sends OTP.
+        If not found, raises EmailNotFoundError.
         """
         email_norm = email.lower().strip()
 
@@ -105,21 +106,20 @@ class ForgotPasswordUseCase:
             email_norm, since=window_start
         )
         if recent_count >= OTP_RATE_LIMIT_COUNT:
-            # Log but return generic success — no disclosure to caller.
             logger.warning(
                 "forgot_password.rate_limited",
                 extra={"email_domain": email_norm.split("@")[-1]},
             )
             return  # generic success, no email sent
 
-        # 2. Look up user — silently skip if not found.
+        # 2. Look up user — check whether email is present before sending OTP.
         user = await self._user_repo.get_by_email(email_norm)
         if user is None:
-            logger.info(
+            logger.warning(
                 "forgot_password.unknown_email",
                 extra={"email_domain": email_norm.split("@")[-1]},
             )
-            return  # generic success, no email sent
+            raise EmailNotFoundError("No account found with this email address.")
 
         # 3. Generate OTP and persist its HMAC.
         otp = generate_otp()

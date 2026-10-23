@@ -82,8 +82,20 @@ export default function ForgotPasswordPage() {
     try {
       await forgotPassword({ email: data.email }).unwrap();
       setSubmitted(true);
-    } catch {
-      setServerError('Something went wrong. Please try again later.');
+    } catch (err: unknown) {
+      const apiErr = err as {
+        data?: {
+          error?: { message?: string; code?: string };
+          detail?: string | { message?: string; code?: string };
+        };
+      };
+      const message =
+        apiErr?.data?.error?.message ||
+        (typeof apiErr?.data?.detail === 'object'
+          ? apiErr.data.detail?.message
+          : apiErr?.data?.detail) ||
+        'Something went wrong. Please try again later.';
+      setServerError(message);
     }
   };
 
@@ -228,7 +240,7 @@ export default function ForgotPasswordPage() {
                 htmlFor="forgot-email"
                 sx={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: '#334155', mb: 0.75 }}
               >
-                Email Address
+                Email Address <Box component="span" sx={{ color: '#ef4444' }}>*</Box>
               </Typography>
               <TextField
                 id="forgot-email"
@@ -240,6 +252,9 @@ export default function ForgotPasswordPage() {
                 {...register('email')}
                 error={!!errors.email}
                 helperText={errors.email?.message}
+                slotProps={{
+                  htmlInput: { 'aria-label': 'Email Address' },
+                }}
                 sx={inputStyle}
               />
             </Box>

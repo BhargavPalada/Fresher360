@@ -10,7 +10,12 @@ import pytest
 from app.application.auth.login import LoginUseCase
 from app.domain.entities.user import User
 from app.domain.enums.user_role import UserRole
-from app.domain.exceptions.authentication import InactiveUserError, InvalidCredentialsError
+from app.domain.exceptions.authentication import (
+    InactiveUserError,
+    InvalidCredentialsError,
+    EmailNotFoundError,
+    WrongPasswordError,
+)
 
 
 def make_user(role: UserRole = UserRole.USER, is_active: bool = True) -> User:
@@ -61,16 +66,16 @@ class TestLoginUseCase:
         assert result.refresh_token == "refresh.token.here"
         assert result.token_type == "bearer"
 
-    async def test_unknown_email_raises_invalid_credentials(
+    async def test_unknown_email_raises_email_not_found(
         self, mock_user_repo, mock_password_hasher, mock_jwt_service
     ) -> None:
         mock_user_repo.get_by_email.return_value = None
 
         use_case = LoginUseCase(mock_user_repo, mock_password_hasher, mock_jwt_service)
-        with pytest.raises(InvalidCredentialsError):
+        with pytest.raises(EmailNotFoundError):
             await use_case.execute("unknown@example.com", "password")
 
-    async def test_wrong_password_raises_invalid_credentials(
+    async def test_wrong_password_raises_wrong_password(
         self, mock_user_repo, mock_password_hasher, mock_jwt_service
     ) -> None:
         user = make_user()
@@ -78,7 +83,7 @@ class TestLoginUseCase:
         mock_password_hasher.verify.return_value = False
 
         use_case = LoginUseCase(mock_user_repo, mock_password_hasher, mock_jwt_service)
-        with pytest.raises(InvalidCredentialsError):
+        with pytest.raises(WrongPasswordError):
             await use_case.execute("user@example.com", "wrongpassword")
 
     async def test_inactive_user_raises_inactive_error(

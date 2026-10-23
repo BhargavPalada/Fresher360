@@ -8,12 +8,21 @@ class AuthenticationError(Exception):
 
 
 class InvalidCredentialsError(AuthenticationError):
-    """Raised when email or password is wrong.
-
-    NOTE: Use the same message for both cases to avoid credential oracle attacks.
-    """
+    """Raised when email or password is wrong."""
 
     message = "Invalid email or password."
+
+
+class EmailNotFoundError(InvalidCredentialsError):
+    """Raised when an email is not registered in the system."""
+
+    message = "No account found with this email address."
+
+
+class WrongPasswordError(InvalidCredentialsError):
+    """Raised when the password is incorrect for an existing account."""
+
+    message = "Incorrect password. Please try again."
 
 
 class InactiveUserError(AuthenticationError):

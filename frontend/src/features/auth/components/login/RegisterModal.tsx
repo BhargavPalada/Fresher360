@@ -165,7 +165,7 @@ export function RegisterModal({ open, onClose }: RegisterModalProps) {
                   htmlFor="register-first-name"
                   sx={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#334155', mb: 0.75 }}
                 >
-                  First Name
+                  First Name <Box component="span" sx={{ color: '#ef4444' }}>*</Box>
                 </Typography>
                 <TextField
                   id="register-first-name"
@@ -175,6 +175,9 @@ export function RegisterModal({ open, onClose }: RegisterModalProps) {
                   {...register('first_name')}
                   error={!!errors.first_name}
                   helperText={errors.first_name?.message}
+                  slotProps={{
+                    htmlInput: { 'aria-label': 'First Name' },
+                  }}
                   sx={inputStyle}
                 />
               </Box>
@@ -185,7 +188,7 @@ export function RegisterModal({ open, onClose }: RegisterModalProps) {
                   htmlFor="register-last-name"
                   sx={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#334155', mb: 0.75 }}
                 >
-                  Last Name
+                  Last Name <Box component="span" sx={{ color: '#ef4444' }}>*</Box>
                 </Typography>
                 <TextField
                   id="register-last-name"
@@ -194,6 +197,9 @@ export function RegisterModal({ open, onClose }: RegisterModalProps) {
                   {...register('last_name')}
                   error={!!errors.last_name}
                   helperText={errors.last_name?.message}
+                  slotProps={{
+                    htmlInput: { 'aria-label': 'Last Name' },
+                  }}
                   sx={inputStyle}
                 />
               </Box>
@@ -206,7 +212,7 @@ export function RegisterModal({ open, onClose }: RegisterModalProps) {
                 htmlFor="register-email"
                 sx={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#334155', mb: 0.75 }}
               >
-                Email Address
+                Email Address <Box component="span" sx={{ color: '#ef4444' }}>*</Box>
               </Typography>
               <TextField
                 id="register-email"
@@ -216,6 +222,9 @@ export function RegisterModal({ open, onClose }: RegisterModalProps) {
                 {...register('email')}
                 error={!!errors.email}
                 helperText={errors.email?.message}
+                slotProps={{
+                  htmlInput: { 'aria-label': 'Email Address' },
+                }}
                 sx={inputStyle}
               />
             </Box>
@@ -227,7 +236,7 @@ export function RegisterModal({ open, onClose }: RegisterModalProps) {
                 htmlFor="register-password"
                 sx={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#334155', mb: 0.75 }}
               >
-                Password
+                Password <Box component="span" sx={{ color: '#ef4444' }}>*</Box>
               </Typography>
               <TextField
                 id="register-password"
@@ -238,6 +247,7 @@ export function RegisterModal({ open, onClose }: RegisterModalProps) {
                 error={!!errors.password}
                 helperText={errors.password?.message}
                 slotProps={{
+                  htmlInput: { 'aria-label': 'Password' },
                   input: {
                     endAdornment: (
                       <InputAdornment position="end">
@@ -265,7 +275,7 @@ export function RegisterModal({ open, onClose }: RegisterModalProps) {
                 htmlFor="register-confirm-password"
                 sx={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#334155', mb: 0.75 }}
               >
-                Confirm Password
+                Confirm Password <Box component="span" sx={{ color: '#ef4444' }}>*</Box>
               </Typography>
               <TextField
                 id="register-confirm-password"
@@ -276,6 +286,7 @@ export function RegisterModal({ open, onClose }: RegisterModalProps) {
                 error={!!errors.confirm_password}
                 helperText={errors.confirm_password?.message}
                 slotProps={{
+                  htmlInput: { 'aria-label': 'Confirm Password' },
                   input: {
                     endAdornment: (
                       <InputAdornment position="end">

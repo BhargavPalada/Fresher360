@@ -124,14 +124,28 @@ export default function VerifyOtpPage() {
         });
       }
     } catch (err: unknown) {
-      const apiErr = err as { data?: { detail?: { message?: string; code?: string } } };
-      const code = apiErr?.data?.detail?.code;
+      const apiErr = err as {
+        data?: {
+          error?: { message?: string; code?: string };
+          detail?: string | { message?: string; code?: string };
+        };
+      };
+      const code =
+        apiErr?.data?.error?.code ||
+        (typeof apiErr?.data?.detail === 'object' ? apiErr.data.detail?.code : undefined);
+      const message =
+        apiErr?.data?.error?.message ||
+        (typeof apiErr?.data?.detail === 'object'
+          ? apiErr.data.detail?.message
+          : apiErr?.data?.detail) ||
+        'Invalid code. Please try again.';
+
       if (code === 'OTP_EXPIRED') {
         setServerError('Your code has expired. Please request a new one.');
       } else if (code === 'OTP_MAX_ATTEMPTS') {
         setServerError('Too many incorrect attempts. Please request a new code.');
       } else {
-        setServerError(apiErr?.data?.detail?.message ?? 'Invalid code. Please try again.');
+        setServerError(message);
       }
     }
   };
@@ -145,8 +159,20 @@ export default function VerifyOtpPage() {
       await forgotPassword({ email }).unwrap();
       setResendSuccess(true);
       startCountdown(60);
-    } catch {
-      setServerError('Failed to resend code. Please try again.');
+    } catch (err: unknown) {
+      const apiErr = err as {
+        data?: {
+          error?: { message?: string; code?: string };
+          detail?: string | { message?: string; code?: string };
+        };
+      };
+      const message =
+        apiErr?.data?.error?.message ||
+        (typeof apiErr?.data?.detail === 'object'
+          ? apiErr.data.detail?.message
+          : apiErr?.data?.detail) ||
+        'Failed to resend code. Please try again.';
+      setServerError(message);
     } finally {
       setResending(false);
     }
@@ -209,7 +235,7 @@ export default function VerifyOtpPage() {
                 htmlFor="otp-input"
                 sx={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: '#334155', mb: 0.75 }}
               >
-                Verification Code
+                Verification Code <Box component="span" sx={{ color: '#ef4444' }}>*</Box>
               </Typography>
               <TextField
                 id="otp-input"
@@ -224,6 +250,7 @@ export default function VerifyOtpPage() {
                 helperText={errors.otp?.message}
                 slotProps={{
                   htmlInput: {
+                    'aria-label': 'Verification Code',
                     maxLength: 6,
                     style: { textAlign: 'center', fontSize: '1.5rem', letterSpacing: '0.4em', fontWeight: 700 },
                   },
