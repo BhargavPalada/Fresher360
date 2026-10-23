@@ -82,8 +82,20 @@ export default function ForgotPasswordPage() {
     try {
       await forgotPassword({ email: data.email }).unwrap();
       setSubmitted(true);
-    } catch {
-      setServerError('Something went wrong. Please try again later.');
+    } catch (err: unknown) {
+      const apiErr = err as {
+        data?: {
+          error?: { message?: string; code?: string };
+          detail?: string | { message?: string; code?: string };
+        };
+      };
+      const message =
+        apiErr?.data?.error?.message ||
+        (typeof apiErr?.data?.detail === 'object'
+          ? apiErr.data.detail?.message
+          : apiErr?.data?.detail) ||
+        'Something went wrong. Please try again later.';
+      setServerError(message);
     }
   };
 

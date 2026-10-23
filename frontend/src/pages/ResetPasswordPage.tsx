@@ -155,14 +155,28 @@ export default function ResetPasswordPage() {
       }).unwrap();
       setSuccess(true);
     } catch (err: unknown) {
-      const apiErr = err as { data?: { detail?: { message?: string; code?: string } } };
-      const code = apiErr?.data?.detail?.code;
+      const apiErr = err as {
+        data?: {
+          error?: { message?: string; code?: string };
+          detail?: string | { message?: string; code?: string };
+        };
+      };
+      const code =
+        apiErr?.data?.error?.code ||
+        (typeof apiErr?.data?.detail === 'object' ? apiErr.data.detail?.code : undefined);
+      const message =
+        apiErr?.data?.error?.message ||
+        (typeof apiErr?.data?.detail === 'object'
+          ? apiErr.data.detail?.message
+          : apiErr?.data?.detail) ||
+        'Something went wrong. Please try again.';
+
       if (code === 'RESET_TOKEN_EXPIRED') {
         setServerError('Your reset session has expired. Please request a new code.');
       } else if (code === 'RESET_TOKEN_INVALID') {
         setServerError('Invalid or already used reset link. Please request a new code.');
       } else {
-        setServerError(apiErr?.data?.detail?.message ?? 'Something went wrong. Please try again.');
+        setServerError(message);
       }
     }
   };

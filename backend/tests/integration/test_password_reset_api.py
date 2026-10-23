@@ -100,10 +100,10 @@ class TestForgotPasswordEndpoint:
         assert body["error"] is None
         assert "verification code" in body["data"]["message"].lower()
 
-    async def test_unknown_email_returns_same_generic_200(
+    async def test_unknown_email_returns_404_not_found(
         self, client: AsyncClient
     ) -> None:
-        """Account enumeration protection: same response for unknown email."""
+        """Checks whether email is present before sending OTP."""
         with (
             patch(
                 "app.infrastructure.database.repositories.user_repository.UserRepository.get_by_email",
@@ -122,9 +122,10 @@ class TestForgotPasswordEndpoint:
                 json={"email": "nobody@example.com"},
             )
 
-        assert response.status_code == 200
+        assert response.status_code == 404
         body = response.json()
-        assert body["error"] is None
+        assert body["error"] is not None
+        assert body["error"]["code"] == "EMAIL_NOT_FOUND"
 
     async def test_invalid_email_returns_422(self, client: AsyncClient) -> None:
         response = await client.post(

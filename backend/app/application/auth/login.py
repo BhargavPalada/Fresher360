@@ -9,7 +9,12 @@ import logging
 from dataclasses import dataclass
 
 from app.application.auth.interfaces import IJWTService, IPasswordHasher, IUserRepository
-from app.domain.exceptions.authentication import InvalidCredentialsError, InactiveUserError
+from app.domain.exceptions.authentication import (
+    InvalidCredentialsError,
+    InactiveUserError,
+    EmailNotFoundError,
+    WrongPasswordError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +42,7 @@ class LoginUseCase:
 
         Security:
         - Email is normalized before lookup.
-        - Same error raised for unknown email and wrong password (no oracle).
+        - Checks whether email exists first, then validates password.
         - Password is never logged.
         """
         email_normalized = email.lower().strip()
@@ -51,14 +56,14 @@ class LoginUseCase:
                 "login.failed.unknown_email",
                 extra={"email": email_normalized},
             )
-            raise InvalidCredentialsError()
+            raise EmailNotFoundError()
 
         if not self._password_hasher.verify(password, user.password_hash):
             logger.warning(
                 "login.failed.wrong_password",
                 extra={"user_id": str(user.id)},
             )
-            raise InvalidCredentialsError()
+            raise WrongPasswordError()
 
         if not user.is_active:
             logger.warning(

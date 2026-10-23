@@ -9,7 +9,7 @@ import uuid
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
-from fastapi import FastAPI, Request, status
+from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -91,6 +91,29 @@ def create_app() -> FastAPI:
         return JSONResponse(
             status_code=status.HTTP_403_FORBIDDEN,
             content={"data": None, "error": {"code": "FORBIDDEN", "message": exc.message}},
+        )
+
+    @app.exception_handler(HTTPException)
+    async def http_exception_handler(
+        request: Request, exc: HTTPException
+    ) -> JSONResponse:
+        detail = exc.detail
+        if isinstance(detail, dict):
+            code = detail.get("code", "ERROR")
+            message = detail.get("message", "An error occurred.")
+        elif isinstance(detail, str):
+            code = "ERROR"
+            message = detail
+        else:
+            code = "ERROR"
+            message = str(detail)
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={
+                "data": None,
+                "error": {"code": code, "message": message},
+                "detail": detail,
+            },
         )
 
     @app.exception_handler(Exception)

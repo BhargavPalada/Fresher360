@@ -54,10 +54,19 @@ export function LoginForm() {
     try {
       await login({ email: data.email, password: data.password });
     } catch (err: unknown) {
-      const apiErr = err as { data?: { error?: { message?: string } } };
-      setServerError(
-        apiErr?.data?.error?.message ?? 'Login failed. Please try again.'
-      );
+      const apiErr = err as {
+        data?: {
+          error?: { message?: string; code?: string };
+          detail?: string | { message?: string; code?: string };
+        };
+      };
+      const message =
+        apiErr?.data?.error?.message ||
+        (typeof apiErr?.data?.detail === 'object'
+          ? apiErr.data.detail?.message
+          : apiErr?.data?.detail) ||
+        'Login failed. Please check your credentials and try again.';
+      setServerError(message);
     }
   };
 
